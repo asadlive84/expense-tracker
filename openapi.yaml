@@ -1,0 +1,1747 @@
+openapi: "3.0.3"
+
+info:
+  title: Expense Tracker API
+  version: "1.0.0"
+  description: |
+    Personal finance API for tracking cash across multiple buckets (wallet, bKash, bank, DPS)
+    with an append-only ledger, Redis-cached balance reports, and recurring payment reminders.
+
+    **Single-user.** There is no signup endpoint. One user is seeded at server startup via
+    environment variables. All endpoints require a JWT bearer token except
+    `POST /v1/auth/login` and `GET /v1/healthz`.
+
+    **Money.** All amounts are `int64` **paisa** (BDT). 1 BDT = 100 paisa.
+    No decimals anywhere — format for display on the client.
+
+    **Append-only ledger.** Transactions are never mutated.
+    `PATCH` inserts a reversal row + a new corrected row and returns the new row.
+    `DELETE` inserts a reversal row only and returns 204.
+
+servers:
+  - url: http://localhost:8080/v1
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: auth
+    description: Login and token management
+  - name: buckets
+    description: Money containers (wallet, bKash, bank account, etc.)
+  - name: people
+    description: Contacts for loan and repayment transactions
+  - name: tags
+    description: Free-form labels for categorising transactions
+  - name: transactions
+    description: The append-only ledger of every money movement
+  - name: reports
+    description: Cached aggregate reports — balances, tag totals, monthly summary
+  - name: reminders
+    description: Recurring payment reminders that auto-create transactions when paid
+
+paths:
+
+  # ── Health ──────────────────────────────────────────────────────────────────
+
+  /healthz:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      description: Returns 200 when the server is running. No auth required.
+      security: []
+      tags: [auth]
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # ── Auth ────────────────────────────────────────────────────────────────────
+
+  /auth/login:
+    post:
+      operationId: login
+      summary: Login
+      description: |
+        Exchange email + password for a JWT. The token is valid for 30 days,
+        signed with HS256. Include it in all subsequent requests as
+        `Authorization: Bearer <token>`.
+      security: []
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              email: user@example.com
+              password: hunter2
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+              example:
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTkyNGQyYS0uLi4ifQ.sig
+                expires_at: "2026-06-14T10:00:00Z"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/InvalidCredentials"
+
+  /auth/register:
+    post:
+      operationId: register
+      summary: Register
+      description: |
+        Create a new user account and receive a JWT immediately.
+        Returns `409 conflict` if the email is already registered.
+
+        Password must be at least 8 characters.
+      security: []
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+            example:
+              email: user@example.com
+              password: mysecretpass
+      responses:
+        "201":
+          description: Account created; JWT returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+              example:
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                expires_at: "2026-06-14T10:00:00Z"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /me:
+    get:
+      operationId: getMe
+      summary: Whoami
+      description: Returns the user_id extracted from the JWT. Useful for verifying a token.
+      tags: [auth]
+      responses:
+        "200":
+          description: Authenticated user info
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user_id]
+                properties:
+                  user_id:
+                    type: string
+                    format: uuid
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Buckets ─────────────────────────────────────────────────────────────────
+
+  /buckets:
+    get:
+      operationId: listBuckets
+      summary: List buckets
+      description: Returns all non-archived buckets for the authenticated user, ordered by creation date.
+      tags: [buckets]
+      responses:
+        "200":
+          description: List of buckets
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Bucket"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      operationId: createBucket
+      summary: Create bucket
+      tags: [buckets]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBucketRequest"
+            example:
+              name: bKash
+              starting_balance_paisa: 500000
+      responses:
+        "201":
+          description: Bucket created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bucket"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /buckets/{id}:
+    patch:
+      operationId: updateBucket
+      summary: Update bucket
+      description: |
+        Rename or archive/unarchive a bucket. All fields are optional — omit any
+        field to leave it unchanged.
+
+        Set `archived: true` to archive; `archived: false` to restore.
+      tags: [buckets]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBucketRequest"
+            examples:
+              rename:
+                summary: Rename only
+                value: { name: "bKash Personal" }
+              archive:
+                summary: Archive
+                value: { archived: true }
+              restore:
+                summary: Unarchive
+                value: { archived: false }
+      responses:
+        "200":
+          description: Updated bucket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bucket"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── People ──────────────────────────────────────────────────────────────────
+
+  /people:
+    get:
+      operationId: listPeople
+      summary: List people
+      description: Returns all non-archived people, ordered by creation date.
+      tags: [people]
+      responses:
+        "200":
+          description: List of people
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Person"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      operationId: createPerson
+      summary: Create person
+      tags: [people]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePersonRequest"
+            example:
+              name: Karim
+      responses:
+        "201":
+          description: Person created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /people/{id}:
+    patch:
+      operationId: updatePerson
+      summary: Update person
+      tags: [people]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePersonRequest"
+      responses:
+        "200":
+          description: Updated person
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Person"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Tags ────────────────────────────────────────────────────────────────────
+
+  /tags:
+    get:
+      operationId: listTags
+      summary: List tags
+      description: |
+        Returns all non-archived tags sorted by most-recently used (last transaction
+        date), then creation date. The full list is always returned — filter locally
+        on the client for autocomplete.
+      tags: [tags]
+      responses:
+        "200":
+          description: List of tags
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Tag"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      operationId: createTag
+      summary: Create tag
+      description: |
+        Tag names are case-insensitive and unique per user. Creating `Food` when `food`
+        already exists returns a conflict error.
+      tags: [tags]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTagRequest"
+            example:
+              name: food
+      responses:
+        "201":
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /tags/{id}:
+    patch:
+      operationId: updateTag
+      summary: Update tag
+      tags: [tags]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTagRequest"
+      responses:
+        "200":
+          description: Updated tag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tag"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Transactions ─────────────────────────────────────────────────────────────
+
+  /transactions:
+    get:
+      operationId: listTransactions
+      summary: List transactions
+      description: |
+        Returns live transactions (reversed ones are excluded) in descending
+        `occurred_at` order. Cursor-based pagination.
+
+        **Combining filters:** all active filters are ANDed.
+        `bucket_id` matches either `from_bucket_id` or `to_bucket_id`.
+
+        **Cursor pagination:** pass the `next_cursor` string from a response as
+        the `cursor` query parameter to get the next page. Stop when
+        `next_cursor` is absent or empty.
+      tags: [transactions]
+      parameters:
+        - name: type
+          in: query
+          description: Filter by transaction type
+          schema:
+            $ref: "#/components/schemas/TransactionType"
+        - name: bucket_id
+          in: query
+          description: Filter where from_bucket_id or to_bucket_id equals this value
+          schema:
+            type: string
+            format: uuid
+        - name: person_id
+          in: query
+          description: Filter by person
+          schema:
+            type: string
+            format: uuid
+        - name: tag_id
+          in: query
+          description: Filter transactions that have this tag attached
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          description: Earliest occurred_at, inclusive (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+            example: "2026-05-01"
+        - name: to
+          in: query
+          description: Latest occurred_at, inclusive end-of-day (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+            example: "2026-05-31"
+        - name: limit
+          in: query
+          description: Number of results per page (default 50, max 200)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          description: Opaque pagination cursor from the previous response's next_cursor
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated list of transactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      operationId: createTransaction
+      summary: Create transaction
+      description: |
+        Creates a new transaction and attaches the given tag IDs.
+
+        **Field rules by type** (see Transaction Types below):
+
+        | type | from_bucket_id | to_bucket_id | person_id |
+        |---|---|---|---|
+        | expense | required | must be null | optional |
+        | income | must be null | required | optional |
+        | transfer | required | required (≠ from) | must be null |
+        | loan_given | required | must be null | required |
+        | loan_taken | must be null | required | required |
+        | repayment_received | must be null | required | required |
+        | repayment_paid | required | must be null | required |
+
+        Violating any rule returns `400 validation_error` with a `fields` map.
+      tags: [transactions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransactionRequest"
+            examples:
+              expense:
+                summary: Expense
+                value:
+                  type: expense
+                  amount_paisa: 25000
+                  from_bucket_id: "01924d2a-0000-0000-0000-000000000001"
+                  note: Lunch at office
+                  occurred_at: "2026-05-14T12:30:00Z"
+                  tag_ids: ["01924d2a-0000-0000-0000-000000000010"]
+              income:
+                summary: Income (salary)
+                value:
+                  type: income
+                  amount_paisa: 5000000
+                  to_bucket_id: "01924d2a-0000-0000-0000-000000000002"
+                  note: May salary
+                  occurred_at: "2026-05-01T10:00:00Z"
+                  tag_ids: []
+              transfer:
+                summary: Transfer between buckets
+                value:
+                  type: transfer
+                  amount_paisa: 100000
+                  from_bucket_id: "01924d2a-0000-0000-0000-000000000001"
+                  to_bucket_id: "01924d2a-0000-0000-0000-000000000002"
+                  note: Move to bKash
+                  occurred_at: "2026-05-10T09:00:00Z"
+                  tag_ids: []
+              loan_given:
+                summary: Loan given to someone
+                value:
+                  type: loan_given
+                  amount_paisa: 500000
+                  from_bucket_id: "01924d2a-0000-0000-0000-000000000001"
+                  person_id: "01924d2a-0000-0000-0000-000000000020"
+                  note: Lent to Karim
+                  occurred_at: "2026-05-05T11:00:00Z"
+                  tag_ids: []
+      responses:
+        "201":
+          description: Transaction created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /transactions/{id}:
+    patch:
+      operationId: updateTransaction
+      summary: Correct a transaction
+      description: |
+        Corrects an existing transaction using the append-only pattern:
+        1. Inserts a reversal row pointing to the original (marks it cancelled).
+        2. Inserts a new row with the corrected data.
+        3. Returns the new row.
+
+        The original row is **never mutated**. Both the original and its reversal
+        disappear from the list endpoint (only the new row appears).
+
+        Returns `409 conflict` if the transaction has already been reversed.
+      tags: [transactions]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransactionRequest"
+      responses:
+        "200":
+          description: New (corrected) transaction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+    delete:
+      operationId: deleteTransaction
+      summary: Delete a transaction
+      description: |
+        Soft-deletes a transaction by inserting a reversal row.
+        The original row is **never removed**. The transaction disappears
+        from the list endpoint.
+
+        Returns `409 conflict` if the transaction has already been reversed.
+      tags: [transactions]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: Transaction reversed (no body)
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  # ── Reports ──────────────────────────────────────────────────────────────────
+
+  /reports/bucket-balances:
+    get:
+      operationId: getBucketBalances
+      summary: Bucket balances
+      description: |
+        Live balance for every non-archived bucket:
+        `starting_balance + sum(credits) − sum(debits)` across all live transactions.
+
+        Results are served from Redis (TTL 1 hour) and fall back to Postgres on
+        cache miss. Redis failures are transparent.
+      tags: [reports]
+      responses:
+        "200":
+          description: Bucket balances
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/BucketBalance"
+              example:
+                items:
+                  - bucket_id: "01924d2a-0000-0000-0000-000000000001"
+                    name: Cash
+                    balance_paisa: 87600
+                  - bucket_id: "01924d2a-0000-0000-0000-000000000002"
+                    name: bKash
+                    balance_paisa: 1234500
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /reports/person-balances:
+    get:
+      operationId: getPersonBalances
+      summary: Person (loan) balances
+      description: |
+        Net paisa position per person across all loan and repayment transactions.
+
+        - **Positive** `net_paisa`: they owe you (you lent more than was repaid to you).
+        - **Negative** `net_paisa`: you owe them (they lent more than you repaid).
+        - Zero: all settled.
+
+        Formula: `sum(loan_given + repayment_received) − sum(loan_taken + repayment_paid)`
+
+        Results are served from Redis (TTL 1 hour).
+      tags: [reports]
+      responses:
+        "200":
+          description: Person balances
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PersonBalance"
+              example:
+                items:
+                  - person_id: "01924d2a-0000-0000-0000-000000000020"
+                    name: Karim
+                    net_paisa: 500000
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /reports/tag-totals:
+    get:
+      operationId: getTagTotals
+      summary: Tag expense totals
+      description: |
+        Total expense paisa per tag for a date range. Only `expense` type
+        transactions are counted. Results are sorted descending by total.
+
+        Results are served from Redis (TTL 15 minutes).
+      tags: [reports]
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Start of date range, inclusive (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+            example: "2026-05-01"
+        - name: to
+          in: query
+          required: true
+          description: End of date range, inclusive end-of-day (YYYY-MM-DD)
+          schema:
+            type: string
+            format: date
+            example: "2026-05-31"
+      responses:
+        "200":
+          description: Tag totals
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/TagTotal"
+              example:
+                items:
+                  - tag_id: "01924d2a-0000-0000-0000-000000000010"
+                    name: food
+                    total_paisa: 320000
+                  - tag_id: "01924d2a-0000-0000-0000-000000000011"
+                    name: transport
+                    total_paisa: 85000
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /reports/summary:
+    get:
+      operationId: getMonthlySummary
+      summary: Monthly summary
+      description: |
+        Total income, total expense, net, and per-tag expense breakdown for
+        a given month.
+
+        Defaults to the current month if `month` is not supplied.
+
+        Results are served from Redis (TTL 1 hour).
+      tags: [reports]
+      parameters:
+        - name: month
+          in: query
+          description: Month in YYYY-MM format (defaults to current month)
+          schema:
+            type: string
+            pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+            example: "2026-05"
+      responses:
+        "200":
+          description: Monthly summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonthlySummary"
+              example:
+                income_paisa: 5000000
+                expense_paisa: 1250000
+                net_paisa: 3750000
+                by_tag:
+                  - tag_id: "01924d2a-0000-0000-0000-000000000010"
+                    name: food
+                    total_paisa: 450000
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Reminders ────────────────────────────────────────────────────────────────
+
+  /reminders:
+    get:
+      operationId: listReminders
+      summary: List reminders
+      description: |
+        Returns active reminders, optionally filtered to those due before a date.
+        Ordered by `next_due_at` ascending.
+      tags: [reminders]
+      parameters:
+        - name: due_before
+          in: query
+          description: |
+            Return only reminders due before this point (RFC3339 or YYYY-MM-DD).
+            Omit to return all active reminders.
+          schema:
+            type: string
+            example: "2026-05-21"
+      responses:
+        "200":
+          description: List of reminders
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Reminder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      operationId: createReminder
+      summary: Create reminder
+      description: |
+        Creates a recurring or one-time payment reminder.
+
+        **Recurrence types:**
+        - `none` — one-time; becomes `completed` after pay or skip.
+        - `weekly` — advances by 7 days.
+        - `monthly` — advances by 1 calendar month, clamped to the last day of
+          the target month (e.g. Jan 31 → Feb 28).
+        - `yearly` — advances by 1 year.
+
+        `recurrence_day` is used with `monthly` only. It sets the target day of
+        month (e.g. `1` = always the 1st). Days beyond the last day of the target
+        month are clamped (e.g. `31` in February → 28 or 29).
+      tags: [reminders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReminderRequest"
+            examples:
+              monthly_dps:
+                summary: Monthly DPS payment
+                value:
+                  title: DPS
+                  amount_paisa: 500000
+                  default_type: expense
+                  recurrence_type: monthly
+                  recurrence_day: 1
+                  next_due_at: "2026-06-01T09:00:00Z"
+                  linked_bucket_id: "01924d2a-0000-0000-0000-000000000001"
+                  tag_ids: []
+              one_time:
+                summary: One-time reminder
+                value:
+                  title: Renew passport
+                  default_type: expense
+                  recurrence_type: none
+                  next_due_at: "2026-08-01T00:00:00Z"
+                  tag_ids: []
+      responses:
+        "201":
+          description: Reminder created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reminder"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /reminders/{id}:
+    patch:
+      operationId: updateReminder
+      summary: Update reminder
+      description: Update any reminder field. All fields optional; omitted fields unchanged.
+      tags: [reminders]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReminderRequest"
+            examples:
+              pause:
+                summary: Pause a reminder
+                value: { status: paused }
+              update_amount:
+                summary: Change the amount
+                value: { amount_paisa: 600000 }
+      responses:
+        "200":
+          description: Updated reminder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reminder"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /reminders/{id}/pay:
+    post:
+      operationId: payReminder
+      summary: Mark reminder as paid
+      description: |
+        Creates a transaction using the reminder's defaults (overridden by the
+        request body where provided), then advances `next_due_at` according to
+        the recurrence rule.
+
+        A `none` recurrence reminder transitions to `completed` after pay.
+
+        If `amount_paisa` is not set in the request body **and** not set on the
+        reminder, the request fails with `400 validation_error`.
+
+        The transaction type, bucket, and person are taken from the reminder's
+        `default_type`, `linked_bucket_id`, and `linked_person_id`.
+      tags: [reminders]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayReminderRequest"
+            examples:
+              with_note:
+                summary: Pay with a note
+                value:
+                  occurred_at: "2026-06-01T09:00:00Z"
+                  note: DPS for June
+              override_amount:
+                summary: Override the amount
+                value:
+                  amount_paisa: 550000
+                  note: DPS June (late fee included)
+      responses:
+        "200":
+          description: Updated reminder and the created transaction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayReminderResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /reminders/{id}/skip:
+    post:
+      operationId: skipReminder
+      summary: Skip a reminder
+      description: |
+        Advances `next_due_at` without creating a transaction.
+
+        A `none` recurrence reminder transitions to `completed` after skip.
+      tags: [reminders]
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Updated reminder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reminder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+# ── Components ──────────────────────────────────────────────────────────────
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT obtained from POST /v1/auth/login. Valid for 30 days.
+
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      description: UUID of the resource
+      schema:
+        type: string
+        format: uuid
+
+  # ── Reusable responses ───────────────────────────────────────────────────────
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid JWT
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: forbidden
+              message: missing token
+
+    InvalidCredentials:
+      description: Wrong email or password
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: invalid_credentials
+              message: invalid email or password
+
+    ValidationError:
+      description: Request body failed validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: validation_error
+              message: transaction field validation failed
+              fields:
+                from_bucket_id: required for expense
+                amount_paisa: must be > 0
+
+    NotFound:
+      description: Resource not found (or belongs to another user)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: not_found
+              message: bucket not found
+
+    Conflict:
+      description: Operation not allowed in the current state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            error:
+              code: conflict
+              message: transaction has already been reversed
+
+  # ── Schemas ──────────────────────────────────────────────────────────────────
+
+  schemas:
+
+    # ── Primitives / shared ───────────────────────────────────────────────────
+
+    TransactionType:
+      type: string
+      enum:
+        - expense
+        - income
+        - transfer
+        - loan_given
+        - loan_taken
+        - repayment_received
+        - repayment_paid
+      description: |
+        - **expense** — money leaves a bucket (lunch, bill, etc.)
+        - **income** — money enters a bucket (salary, sale, etc.)
+        - **transfer** — move money between two of your own buckets
+        - **loan_given** — you lent money to someone (money leaves your bucket)
+        - **loan_taken** — someone lent money to you (money enters your bucket)
+        - **repayment_received** — someone repaid a loan you gave them
+        - **repayment_paid** — you repaid a loan someone gave you
+
+    RecurrenceType:
+      type: string
+      enum: [none, weekly, monthly, yearly]
+
+    ReminderStatus:
+      type: string
+      enum: [active, paused, completed]
+
+    TagRef:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: food
+
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - invalid_credentials
+            - validation_error
+            - not_found
+            - forbidden
+            - conflict
+            - internal_error
+        message:
+          type: string
+          description: Human-readable description of the error
+        fields:
+          type: object
+          description: |
+            Present only on `validation_error`. Maps field names to the
+            constraint that failed.
+          additionalProperties:
+            type: string
+          example:
+            from_bucket_id: required for expense
+
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorDetail"
+
+    # ── Auth ──────────────────────────────────────────────────────────────────
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          minLength: 1
+          example: hunter2
+
+    LoginResponse:
+      type: object
+      required: [token, expires_at]
+      properties:
+        token:
+          type: string
+          description: JWT bearer token. Include as `Authorization: Bearer <token>`.
+        expires_at:
+          type: string
+          format: date-time
+          description: UTC timestamp when the token expires (30 days from issue).
+
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+        password:
+          type: string
+          minLength: 8
+          example: mysecretpass
+
+    # ── Bucket ────────────────────────────────────────────────────────────────
+
+    Bucket:
+      type: object
+      required: [id, user_id, name, starting_balance_paisa, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: bKash
+        starting_balance_paisa:
+          type: integer
+          format: int64
+          description: Opening balance in paisa. May be 0.
+          example: 500000
+        archived_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Non-null when the bucket is archived. Omitted when null.
+        created_at:
+          type: string
+          format: date-time
+
+    CreateBucketRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: bKash
+        starting_balance_paisa:
+          type: integer
+          format: int64
+          minimum: 0
+          default: 0
+          description: Opening balance in paisa. Defaults to 0.
+
+    UpdateBucketRequest:
+      type: object
+      description: All fields optional. Omitted fields are unchanged.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        archived:
+          type: boolean
+          description: Set true to archive, false to restore.
+
+    # ── Person ────────────────────────────────────────────────────────────────
+
+    Person:
+      type: object
+      required: [id, user_id, name, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Karim
+        archived_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Omitted when null.
+        created_at:
+          type: string
+          format: date-time
+
+    CreatePersonRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Karim
+
+    UpdatePersonRequest:
+      type: object
+      description: All fields optional.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        archived:
+          type: boolean
+
+    # ── Tag ───────────────────────────────────────────────────────────────────
+
+    Tag:
+      type: object
+      required: [id, user_id, name, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: food
+        archived_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Omitted when null.
+        created_at:
+          type: string
+          format: date-time
+
+    CreateTagRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Case-insensitive. "Food" and "food" are the same tag.
+          example: food
+
+    UpdateTagRequest:
+      type: object
+      description: All fields optional.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        archived:
+          type: boolean
+
+    # ── Transaction ───────────────────────────────────────────────────────────
+
+    Transaction:
+      type: object
+      required:
+        - id
+        - user_id
+        - type
+        - amount_paisa
+        - note
+        - occurred_at
+        - created_at
+        - tags
+        - reversed
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/TransactionType"
+        amount_paisa:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Transaction amount in paisa. Always positive.
+          example: 25000
+        from_bucket_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Source bucket. Null when not applicable for the type.
+        to_bucket_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Destination bucket. Null when not applicable for the type.
+        person_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Counterparty for loan/repayment types. Null for expense/income/transfer.
+        note:
+          type: string
+          description: Free-text note. Empty string when not provided.
+          example: Lunch at office
+        occurred_at:
+          type: string
+          format: date-time
+          description: When the money moved (user-supplied, UTC).
+        created_at:
+          type: string
+          format: date-time
+          description: When this row was inserted (server-assigned).
+        reverses_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Present only on reversal rows — the ID of the original transaction
+            this row cancels. Omitted from the response when null. Normal
+            client code never needs to inspect this.
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/TagRef"
+          description: Tags attached to this transaction. Empty array when none.
+        reversed:
+          type: boolean
+          description: |
+            True if this transaction has been cancelled by a subsequent reversal.
+            Live transactions (returned by GET /transactions) always have
+            reversed: false because reversed ones are filtered out.
+
+    CreateTransactionRequest:
+      type: object
+      required: [type, amount_paisa, occurred_at]
+      properties:
+        type:
+          $ref: "#/components/schemas/TransactionType"
+        amount_paisa:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Must be greater than 0.
+          example: 25000
+        from_bucket_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Required for: expense, transfer, loan_given, repayment_paid.
+            Must be null for: income, loan_taken, repayment_received.
+        to_bucket_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Required for: income, transfer, loan_taken, repayment_received.
+            Must be null for: expense, loan_given, repayment_paid.
+            For transfer: must differ from from_bucket_id.
+        person_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Required for: loan_given, loan_taken, repayment_received, repayment_paid.
+            Must be null for: transfer.
+            Optional for: expense, income.
+        note:
+          type: string
+          default: ""
+          example: Lunch at office
+        occurred_at:
+          type: string
+          format: date-time
+          description: When the money moved. RFC3339, UTC recommended.
+          example: "2026-05-14T12:30:00Z"
+        tag_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          default: []
+          description: IDs of existing tags to attach. Unknown IDs are silently ignored.
+
+    TransactionList:
+      type: object
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        next_cursor:
+          type: string
+          description: |
+            Opaque base64 cursor for the next page. Empty string when there
+            are no more results. Pass as `?cursor=` on the next request.
+          example: eyJ0IjoiMjAyNi0wNS0xNFQxMjozMDowMFoiLCJpIjoiMDE5MjRkMmEifQ==
+
+    # ── Reports ───────────────────────────────────────────────────────────────
+
+    BucketBalance:
+      type: object
+      required: [bucket_id, name, balance_paisa]
+      properties:
+        bucket_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: bKash
+        balance_paisa:
+          type: integer
+          format: int64
+          description: |
+            Current balance in paisa. Can be negative if debits exceed
+            starting_balance + credits.
+          example: 1234500
+
+    PersonBalance:
+      type: object
+      required: [person_id, name, net_paisa]
+      properties:
+        person_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Karim
+        net_paisa:
+          type: integer
+          format: int64
+          description: |
+            Positive: they owe you. Negative: you owe them. Zero: settled.
+          example: 500000
+
+    TagTotal:
+      type: object
+      required: [tag_id, name, total_paisa]
+      properties:
+        tag_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: food
+        total_paisa:
+          type: integer
+          format: int64
+          description: Sum of expense amounts for this tag in the requested range.
+          example: 320000
+
+    MonthlySummary:
+      type: object
+      required: [income_paisa, expense_paisa, net_paisa, by_tag]
+      properties:
+        income_paisa:
+          type: integer
+          format: int64
+          description: Total income for the month.
+          example: 5000000
+        expense_paisa:
+          type: integer
+          format: int64
+          description: Total expenses for the month.
+          example: 1250000
+        net_paisa:
+          type: integer
+          format: int64
+          description: income_paisa − expense_paisa.
+          example: 3750000
+        by_tag:
+          type: array
+          items:
+            $ref: "#/components/schemas/TagTotal"
+          description: Per-tag expense breakdown. Empty array if no tagged expenses.
+
+    # ── Reminder ──────────────────────────────────────────────────────────────
+
+    Reminder:
+      type: object
+      required:
+        - id
+        - user_id
+        - title
+        - default_type
+        - recurrence_type
+        - next_due_at
+        - status
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: DPS
+        amount_paisa:
+          type: integer
+          format: int64
+          nullable: true
+          description: Default amount in paisa. Null if not set. Omitted when null.
+          example: 500000
+        default_type:
+          $ref: "#/components/schemas/TransactionType"
+          description: Transaction type to create when this reminder is paid.
+        recurrence_type:
+          $ref: "#/components/schemas/RecurrenceType"
+        recurrence_day:
+          type: integer
+          format: int32
+          nullable: true
+          minimum: 1
+          maximum: 31
+          description: |
+            Day of month for monthly recurrence. Null for other recurrence types.
+            Clamped to the last day of the target month at advance time.
+            Omitted when null.
+          example: 1
+        next_due_at:
+          type: string
+          format: date-time
+          description: When the next payment is due.
+        linked_bucket_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            Bucket used when auto-creating the transaction on pay.
+            Used as from_bucket for expense/loan_given/repayment_paid types,
+            and as to_bucket for income/loan_taken/repayment_received types.
+            Omitted when null.
+        linked_person_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Person used when auto-creating the transaction on pay. Omitted when null.
+        status:
+          $ref: "#/components/schemas/ReminderStatus"
+        created_at:
+          type: string
+          format: date-time
+
+    CreateReminderRequest:
+      type: object
+      required: [title, default_type, recurrence_type, next_due_at]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: DPS
+        amount_paisa:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+          description: Optional. Can be overridden at pay time.
+        default_type:
+          $ref: "#/components/schemas/TransactionType"
+        recurrence_type:
+          $ref: "#/components/schemas/RecurrenceType"
+        recurrence_day:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 31
+          nullable: true
+          description: Day of month for monthly recurrence only. Ignored for other types.
+        next_due_at:
+          type: string
+          format: date-time
+        linked_bucket_id:
+          type: string
+          format: uuid
+          nullable: true
+        linked_person_id:
+          type: string
+          format: uuid
+          nullable: true
+        tag_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          default: []
+
+    UpdateReminderRequest:
+      type: object
+      description: All fields optional. Omitted fields are unchanged.
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        amount_paisa:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+        default_type:
+          $ref: "#/components/schemas/TransactionType"
+        recurrence_type:
+          $ref: "#/components/schemas/RecurrenceType"
+        recurrence_day:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 31
+          nullable: true
+        next_due_at:
+          type: string
+          format: date-time
+        linked_bucket_id:
+          type: string
+          format: uuid
+          nullable: true
+        linked_person_id:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          $ref: "#/components/schemas/ReminderStatus"
+        tag_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    PayReminderRequest:
+      type: object
+      description: All fields optional. Falls back to reminder defaults.
+      properties:
+        amount_paisa:
+          type: integer
+          format: int64
+          minimum: 1
+          nullable: true
+          description: |
+            Overrides the reminder's amount_paisa for this payment only.
+            Required if the reminder has no amount_paisa set.
+        occurred_at:
+          type: string
+          format: date-time
+          description: When the payment occurred. Defaults to now.
+        note:
+          type: string
+          default: ""
+
+    PayReminderResponse:
+      type: object
+      required: [reminder, transaction]
+      properties:
+        reminder:
+          $ref: "#/components/schemas/Reminder"
+          description: The updated reminder with the new next_due_at.
+        transaction:
+          $ref: "#/components/schemas/Transaction"
+          description: The transaction that was created for this payment.
