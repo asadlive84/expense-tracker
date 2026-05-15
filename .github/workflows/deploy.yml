@@ -26,8 +26,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker build \
-            -t $ECR_REGISTRY/expense-tracker-api:latest .
+          docker build -t $ECR_REGISTRY/expense-tracker-api:latest .
           docker push $ECR_REGISTRY/expense-tracker-api:latest
 
       - name: Build and Push Frontend Image
@@ -35,24 +34,23 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           cd frontend
-          docker build \
-            --build-arg VITE_API_BASE_URL=/v1 \
+          docker build --build-arg VITE_API_BASE_URL=/v1 \
             -t $ECR_REGISTRY/expense-tracker-frontend:latest .
           docker push $ECR_REGISTRY/expense-tracker-frontend:latest
 
-      - name: Copy compose file to server
+      - name: Copy files to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.prod.yml"
+          source: "docker-compose.prod.yml,deploy/nginx.conf"
           target: "~/expense-tracker"
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REGISTRY:        ${{ steps.login-ecr.outputs.registry }}
           AWS_REGION:          ${{ secrets.AWS_REGION }}
           AWS_ACCOUNT_ID:      ${{ secrets.AWS_ACCOUNT_ID }}
           DB_PASSWORD:         ${{ secrets.DB_PASSWORD }}
@@ -70,37 +68,21 @@ jobs:
           script_stop: true
           script: |
             set -e
+            DOMAIN_OR_IP="${DOMAIN:-$SERVER_IP}"
 
-            # ── STEP 1: Install nginx + certbot (only if not already installed) ─
+            # 1. Install nginx + certbot if not present
             if ! command -v nginx &>/dev/null; then
-              echo ">>> Installing nginx + certbot..."
-              # Stop anything on port 80 first (Docker might be using it)
               docker ps -q --filter "publish=80" | xargs -r docker stop || true
               sudo apt-get update -qq
               sudo apt-get install -y nginx certbot python3-certbot-nginx
               sudo systemctl enable nginx
               sudo systemctl start nginx
-              echo ">>> nginx installed and started"
             fi
 
-            # ── STEP 2: Write nginx config (overwrites every deploy = always up to date) ─
-            DOMAIN_OR_IP="${DOMAIN:-$SERVER_IP}"
-            sudo tee /etc/nginx/sites-available/expense-tracker > /dev/null <<NGINX
-server {
-    listen 80;
-    server_name ${DOMAIN_OR_IP};
-
-    location / {
-        proxy_pass         http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header   Host \$host;
-        proxy_set_header   X-Real-IP \$remote_addr;
-        proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto \$scheme;
-        proxy_read_timeout 60s;
-    }
-}
-NGINX
+            # 2. Write nginx config from the SCP'd file (sed replaces __DOMAIN__)
+            sed "s/__DOMAIN__/${DOMAIN_OR_IP}/g" \
+              ~/expense-tracker/deploy/nginx.conf \
+              | sudo tee /etc/nginx/sites-available/expense-tracker > /dev/null
 
             sudo ln -sf /etc/nginx/sites-available/expense-tracker \
                         /etc/nginx/sites-enabled/expense-tracker
@@ -108,41 +90,32 @@ NGINX
             sudo nginx -t
             sudo systemctl reload nginx
 
-            # ── STEP 3: Get SSL certificate (only once — certbot skips if cert exists) ─
-            if [ -n "$DOMAIN" ]; then
-              sudo certbot --nginx \
-                --non-interactive \
-                --agree-tos \
-                --email "${CERTBOT_EMAIL}" \
-                --keep-until-expiring \
-                -d "${DOMAIN}"
+            # 3. Get SSL cert (skipped if cert already exists)
+            if [ -n "$DOMAIN" ] && [ ! -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then
+              sudo certbot --nginx --non-interactive --agree-tos \
+                --email "${CERTBOT_EMAIL}" -d "${DOMAIN}"
               sudo systemctl reload nginx
             fi
 
-            # ── STEP 4: ECR login ────────────────────────────────────────────
+            # 4. Login to ECR
             aws ecr get-login-password --region "${AWS_REGION}" \
               | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
 
-            # ── STEP 5: Write .env (no indentation — critical for correct parsing) ─
+            # 5. Write .env using printf (no heredoc — avoids YAML issues)
             mkdir -p ~/expense-tracker
-            cat > ~/expense-tracker/.env <<ENV
-DB_PASSWORD=${DB_PASSWORD}
-JWT_SECRET=${JWT_SECRET}
-SERVER_IP=${SERVER_IP}
-AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}
-AWS_REGION=${AWS_REGION}
-DB_USER=postgres
-DB_NAME=expense_tracker
-SEED_USER_EMAIL=${SEED_USER_EMAIL}
-SEED_USER_PASSWORD=${SEED_USER_PASSWORD}
-ENV
+            printf 'DB_PASSWORD=%s\n'        "${DB_PASSWORD}"        >  ~/expense-tracker/.env
+            printf 'JWT_SECRET=%s\n'         "${JWT_SECRET}"         >> ~/expense-tracker/.env
+            printf 'SERVER_IP=%s\n'          "${SERVER_IP}"          >> ~/expense-tracker/.env
+            printf 'AWS_ACCOUNT_ID=%s\n'     "${AWS_ACCOUNT_ID}"     >> ~/expense-tracker/.env
+            printf 'AWS_REGION=%s\n'         "${AWS_REGION}"         >> ~/expense-tracker/.env
+            printf 'DB_USER=%s\n'            "postgres"              >> ~/expense-tracker/.env
+            printf 'DB_NAME=%s\n'            "expense_tracker"       >> ~/expense-tracker/.env
+            printf 'SEED_USER_EMAIL=%s\n'    "${SEED_USER_EMAIL}"    >> ~/expense-tracker/.env
+            printf 'SEED_USER_PASSWORD=%s\n' "${SEED_USER_PASSWORD}" >> ~/expense-tracker/.env
 
-            # ── STEP 6: Pull new images + restart Docker ─────────────────────
+            # 6. Pull new images and restart
             cd ~/expense-tracker
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
-            echo ""
-            echo "✅ Deploy complete!"
-            echo "   Domain : ${DOMAIN_OR_IP}"
-            echo "   HTTPS  : $([ -n '$DOMAIN' ] && echo 'yes' || echo 'no (IP only)')"
+            echo "Deploy complete - ${DOMAIN_OR_IP}"
