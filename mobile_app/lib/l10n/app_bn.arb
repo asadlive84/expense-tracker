@@ -1,0 +1,314 @@
+{
+  "@@locale": "bn",
+
+  "appName": "এক্সপেন্স ট্র্যাকার",
+  "appTagline": "আপনার ব্যক্তিগত অর্থ ব্যবস্থাপক",
+
+  "signIn": "সাইন ইন",
+  "signInToAccount": "আপনার অ্যাকাউন্টে সাইন ইন করুন",
+  "signUp": "সাইন আপ",
+  "createAccount": "অ্যাকাউন্ট তৈরি করুন",
+  "startTracking": "আপনার অর্থ ট্র্যাক শুরু করুন",
+  "email": "ইমেইল",
+  "password": "পাসওয়ার্ড",
+  "passwordMin": "পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর)",
+  "confirmPassword": "পাসওয়ার্ড নিশ্চিত করুন",
+  "yourName": "আপনার নাম (ঐচ্ছিক)",
+  "phoneNumber": "ফোন নম্বর (ঐচ্ছিক)",
+  "noAccount": "অ্যাকাউন্ট নেই? তৈরি করুন",
+  "haveAccount": "ইতিমধ্যে অ্যাকাউন্ট আছে? সাইন ইন করুন",
+  "loginFailed": "লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।",
+  "registerFailed": "নিবন্ধন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।",
+  "incorrectCredentials": "ইমেইল বা পাসওয়ার্ড ভুল।",
+  "emailAlreadyRegistered": "এই ইমেইল ইতিমধ্যে নিবন্ধিত। সাইন ইন করুন।",
+  "cannotReachServer": "সার্ভারে সংযোগ করা যাচ্ছে না। আপনার সংযোগ পরীক্ষা করুন।",
+  "serverError": "সার্ভার সমস্যা। পরে আবার চেষ্টা করুন।",
+  "passwordsDoNotMatch": "পাসওয়ার্ড মিলছে না।",
+  "passwordTooShort": "পাসওয়ার্ড কমপক্ষে ৮ অক্ষর হতে হবে।",
+  "emailPasswordRequired": "ইমেইল এবং পাসওয়ার্ড আবশ্যক।",
+
+  "dashboard": "ড্যাশবোর্ড",
+  "ledger": "লেনদেন",
+  "insights": "বিশ্লেষণ",
+  "reminders": "রিমাইন্ডার",
+  "settings": "সেটিংস",
+
+  "hi": "হ্যালো, {name} 👋",
+  "@hi": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "expenseTracker": "এক্সপেন্স ট্র্যাকার",
+  "totalBalance": "মোট ব্যালেন্স",
+  "incomeThisMonth": "এই মাসের আয়",
+  "expensesThisMonth": "এই মাসের খরচ",
+  "netThisMonth": "এই মাসের নেট",
+  "recentTransactions": "সাম্প্রতিক লেনদেন",
+  "upcoming": "আসন্ন",
+  "noTransactionsYet": "এখনো কোনো লেনদেন নেই। প্রথমটি তৈরি করুন!",
+  "noUpcomingReminders": "কোনো আসন্ন রিমাইন্ডার নেই",
+  "whatShouldWeCallYou": "আমরা আপনাকে কী নামে ডাকব?",
+  "save": "সংরক্ষণ করুন",
+  "pay": "পরিশোধ",
+  "skip": "এড়িয়ে যান",
+  "newTransaction": "নতুন লেনদেন",
+
+  "transactions": "লেনদেন",
+  "allMoneyMovements": "সকল লেনদেন",
+  "add": "যোগ করুন",
+  "allTypes": "সব ধরন",
+  "allBuckets": "সব বাকেট",
+  "allPeople": "সব মানুষ",
+  "allTags": "সব ট্যাগ",
+  "filters": "ফিল্টার",
+  "clearFilters": "ফিল্টার মুছুন",
+  "noTransactionsFound": "কোনো লেনদেন পাওয়া যায়নি",
+  "adjustFilters": "ফিল্টার পরিবর্তন করুন অথবা নতুন লেনদেন তৈরি করুন।",
+  "deleteTransaction": "লেনদেন মুছুন?",
+  "deleteTransactionNote": "একটি বিপরীত এন্ট্রি যুক্ত হবে। মূল এন্ট্রি অক্ষত থাকবে।",
+  "transactionDeleted": "লেনদেন মুছে ফেলা হয়েছে",
+  "transactionUpdated": "লেনদেন আপডেট হয়েছে",
+  "transactionSaved": "লেনদেন সংরক্ষিত হয়েছে",
+
+  "editTransaction": "লেনদেন সম্পাদনা",
+  "newTransactionTitle": "নতুন লেনদেন",
+  "amount": "পরিমাণ",
+  "note": "নোট (ঐচ্ছিক)",
+  "dateTime": "তারিখ ও সময়",
+  "tags": "ট্যাগ",
+  "fromBucket": "উৎস বাকেট",
+  "toBucket": "গন্তব্য বাকেট",
+  "from": "হতে",
+  "to": "পর্যন্ত",
+  "person": "ব্যক্তি",
+  "saveTransaction": "লেনদেন সংরক্ষণ করুন",
+  "updateTransaction": "লেনদেন আপডেট করুন",
+  "enterValidAmount": "সঠিক পরিমাণ লিখুন",
+  "selectSourceBucket": "উৎস বাকেট নির্বাচন করুন",
+  "selectDestBucket": "গন্তব্য বাকেট নির্বাচন করুন",
+  "selectPerson": "ব্যক্তি নির্বাচন করুন",
+  "bucketsCannotBeSame": "উৎস এবং গন্তব্য বাকেট আলাদা হতে হবে",
+
+  "expense": "খরচ",
+  "income": "আয়",
+  "transfer": "ট্রান্সফার",
+  "loanGiven": "ঋণ দেওয়া",
+  "loanTaken": "ঋণ নেওয়া",
+  "repaymentReceived": "পরিশোধ পেয়েছি",
+  "repaymentPaid": "পরিশোধ করেছি",
+
+  "buckets": "বাকেট",
+  "newBucket": "নতুন বাকেট",
+  "bucketName": "বাকেটের নাম",
+  "startingBalance": "প্রারম্ভিক ব্যালেন্স (৳)",
+  "bucketCreated": "বাকেট তৈরি হয়েছে",
+  "bucketUpdated": "বাকেট আপডেট হয়েছে",
+  "archived": "আর্কাইভ করা ({count})",
+  "@archived": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "archiveBucket": "বাকেট আর্কাইভ করবেন?",
+  "archiveBucketNote": "{name} তালিকা থেকে লুকানো হবে। লেনদেন সংরক্ষিত থাকবে।",
+  "@archiveBucketNote": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "archive": "আর্কাইভ",
+  "unarchive": "পুনরুদ্ধার",
+  "rename": "নাম পরিবর্তন",
+  "noBucketsYet": "এখনো কোনো বাকেট নেই। একটি তৈরি করুন!",
+
+  "people": "মানুষজন",
+  "addPerson": "মানুষ যোগ করুন",
+  "personName": "নাম",
+  "personAdded": "যোগ করা হয়েছে",
+  "personUpdated": "আপডেট হয়েছে",
+  "owesYou": "আপনার কাছে {amount} পাওনা",
+  "@owesYou": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "youOwe": "আপনি {amount} দেনা",
+  "@youOwe": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "settled": "পরিশোধিত",
+  "noPeopleYet": "এখনো কোনো মানুষ নেই।",
+
+  "tagsTitle": "ট্যাগ",
+  "newTag": "নতুন ট্যাগ",
+  "tagName": "ট্যাগের নাম",
+  "tagNameHint": "যেমন: খাবার, যাতায়াত, পরিবার",
+  "tagCreated": "ট্যাগ তৈরি হয়েছে",
+  "tagRenamed": "ট্যাগ নামান্তর হয়েছে",
+  "thisMonth": "এই মাসে",
+  "noTagsYet": "এখনো কোনো ট্যাগ নেই।",
+
+  "insightsTitle": "বিশ্লেষণ",
+  "incomeVsExpense": "আয় বনাম খরচ",
+  "last6Months": "গত ৬ মাস",
+  "spendingByCategory": "বিভাগ অনুযায়ী খরচ",
+  "bucketBalances": "বাকেট ব্যালেন্স",
+  "live": "সরাসরি",
+  "peopleBalances": "ঋণ ব্যালেন্স",
+  "outstandingLoans": "বকেয়া ঋণ",
+  "allSettledUp": "সব পরিশোধিত! 🎉",
+  "noTaggedExpenses": "এই মাসে কোনো ট্যাগযুক্ত খরচ নেই",
+  "thisMonthChip": "এই মাস",
+  "lastMonth": "গত মাস",
+  "custom": "কাস্টম",
+  "totalLabel": "মোট",
+
+  "remindersTitle": "রিমাইন্ডার",
+  "newReminder": "নতুন রিমাইন্ডার",
+  "editReminder": "রিমাইন্ডার সম্পাদনা",
+  "noReminders": "এখনো কোনো রিমাইন্ডার নেই",
+  "tapToCreate": "+ দিয়ে তৈরি করুন",
+  "overdue": "মেয়াদোত্তীর্ণ ({count})",
+  "@overdue": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "dueSoon": "শীঘ্রই দেয় ({count})",
+  "@dueSoon": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "upcomingSection": "আসন্ন ({count})",
+  "@upcomingSection": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "reminderTitle": "শিরোনাম *",
+  "reminderAmount": "পরিমাণ ৳ (ঐচ্ছিক)",
+  "transactionType": "লেনদেনের ধরন",
+  "recurrence": "পুনরাবৃত্তি",
+  "once": "একবার",
+  "weekly": "সাপ্তাহিক",
+  "monthly": "মাসিক",
+  "yearly": "বার্ষিক",
+  "dayOfMonth": "মাসের দিন (ঐচ্ছিক)",
+  "sameasStartDate": "শুরুর তারিখের মতো",
+  "nextDueDate": "পরবর্তী তারিখ",
+  "linkedBucket": "সংযুক্ত বাকেট (ঐচ্ছিক)",
+  "linkedPerson": "সংযুক্ত ব্যক্তি (ঐচ্ছিক)",
+  "none": "কোনোটি নয়",
+  "createReminder": "রিমাইন্ডার তৈরি করুন",
+  "updateReminder": "রিমাইন্ডার আপডেট করুন",
+  "reminderCreated": "রিমাইন্ডার তৈরি হয়েছে",
+  "reminderUpdated": "রিমাইন্ডার আপডেট হয়েছে",
+  "titleRequired": "শিরোনাম আবশ্যক",
+  "payReminder": "পরিশোধ: {title}",
+  "@payReminder": {
+    "placeholders": {
+      "title": { "type": "String" }
+    }
+  },
+  "willCreateTransaction": "{type} লেনদেন তৈরি হবে",
+  "@willCreateTransaction": {
+    "placeholders": {
+      "type": { "type": "String" }
+    }
+  },
+  "amountLabel": "পরিমাণ (৳)",
+  "noteOptional": "নোট (ঐচ্ছিক)",
+  "markAsPaid": "পরিশোধ করা হয়েছে",
+  "paymentRecorded": "পরিশোধ রেকর্ড হয়েছে!",
+  "skipped": "এড়িয়ে যাওয়া হয়েছে",
+  "skipReminder": "\"{title}\" এড়িয়ে যাবেন?",
+  "@skipReminder": {
+    "placeholders": {
+      "title": { "type": "String" }
+    }
+  },
+  "nextDueWillBe": "পরবর্তী তারিখ হবে: {date}",
+  "@nextDueWillBe": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "amountNotSet": "পরিমাণ নির্ধারিত নয়",
+
+  "settingsTitle": "সেটিংস",
+  "manage": "ব্যবস্থাপনা",
+  "bucketsSubtitle": "মানি কন্টেইনার যোগ, নামান্তর, আর্কাইভ",
+  "peopleSubtitle": "ঋণ/পরিশোধের যোগাযোগ ব্যবস্থাপনা",
+  "tagsSubtitle": "ব্যয়ের বিভাগ ব্যবস্থাপনা",
+  "appearance": "চেহারা",
+  "theme": "থিম",
+  "lightTheme": "হালকা",
+  "darkTheme": "গাঢ়",
+  "systemTheme": "সিস্টেম",
+  "about": "সম্পর্কে",
+  "developer": "ডেভেলপার",
+  "developerSubtitle": "Asaduzzaman Sohel · @asadlive84",
+  "advanced": "উন্নত",
+  "serverUrl": "সার্ভার URL",
+  "serverUrlSubtitle": "সার্ভারের ঠিকানা পরিবর্তন করুন",
+  "account": "অ্যাকাউন্ট",
+  "reportIssue": "সমস্যা রিপোর্ট করুন",
+  "reportIssueSubtitle": "ইমেইলে বাগ রিপোর্ট পাঠান",
+  "signOut": "সাইন আউট",
+  "signOutSubtitle": "সেশন মুছুন এবং লগইনে ফিরুন",
+  "signOutConfirm": "সাইন আউট করবেন?",
+  "signOutNote": "আপনার সেশন মুছে যাবে।",
+  "cancel": "বাতিল",
+  "yourName2": "আপনার নাম",
+  "addYourName": "আপনার নাম যোগ করুন",
+  "nameAndPhone": "নাম ও ফোন — সম্পাদনা করতে ট্যাপ করুন",
+  "editProfile": "প্রোফাইল সম্পাদনা",
+  "fullName": "পূর্ণ নাম",
+  "phoneOptional": "ফোন নম্বর (ঐচ্ছিক)",
+  "changesSavedToAccount": "পরিবর্তনগুলো আপনার অ্যাকাউন্টে সংরক্ষিত হবে।",
+  "resetToDefault": "ডিফল্টে ফিরুন",
+  "baseUrl": "বেস URL",
+  "baseUrlHint": "http://আপনার-সার্ভার/v1",
+  "default2": "ডিফল্ট: {url}",
+  "@default2": {
+    "placeholders": {
+      "url": { "type": "String" }
+    }
+  },
+
+  "aboutTitle": "সম্পর্কে",
+  "developerDesigner": "ডেভেলপার ও ডিজাইনার",
+  "emailLabel": "ইমেইল",
+  "socialLabel": "সোশ্যাল",
+  "appLabel": "অ্যাপ",
+  "version": "সংস্করণ",
+  "builtWith": "তৈরিতে ব্যবহৃত",
+  "madeWithLove": "❤️ বাংলাদেশে তৈরি",
+  "copyright": "© ২০২৬ Asaduzzaman Sohel",
+
+  "noInternetConnection": "ইন্টারনেট সংযোগ নেই",
+  "checkConnection": "আপনার ওয়াই-ফাই বা মোবাইল ডেটা\nপরীক্ষা করুন এবং আবার চেষ্টা করুন।",
+  "serverUnavailable": "সার্ভার অনুপলব্ধ",
+  "serverUnavailableNote": "সার্ভারে সংযোগ করতে সমস্যা হচ্ছে।\nএটি সাধারণত অস্থায়ী — আমরা ১৫ সেকেন্ড পরপর\nস্বয়ংক্রিয়ভাবে চেষ্টা করব।",
+  "retryingAutomatically": "স্বয়ংক্রিয়ভাবে চেষ্টা চলছে…",
+  "reportThisIssue": "এই সমস্যা রিপোর্ট করুন",
+
+  "saved": "সংরক্ষিত",
+  "updated": "আপডেট হয়েছে",
+  "deleted": "মুছে ফেলা হয়েছে",
+  "archived2": "আর্কাইভ হয়েছে",
+  "restored": "পুনরুদ্ধার হয়েছে",
+  "somethingWentWrong": "কিছু একটা ভুল হয়েছে। আবার চেষ্টা করুন।",
+  "retry": "পুনরায় চেষ্টা",
+  "failedToLoad": "লোড ব্যর্থ হয়েছে",
+  "edit": "সম্পাদনা",
+  "delete": "মুছুন",
+  "confirm": "নিশ্চিত করুন",
+  "language": "ভাষা",
+  "bangla": "বাংলা",
+  "english": "English"
+}

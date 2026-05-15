@@ -1,6 +1,7 @@
 import 'package:expense_tracker_app/core/api/app_error.dart';
 import 'package:expense_tracker_app/core/api/api_client.dart';
 import 'package:expense_tracker_app/features/auth/providers/auth_controller.dart';
+import 'package:expense_tracker_app/l10n/app_localizations.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,12 +15,14 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailCtrl    = TextEditingController();
-  final _passwordCtrl = TextEditingController();
+  final _emailCtrl     = TextEditingController();
+  final _passwordCtrl  = TextEditingController();
   final _passwordFocus = FocusNode();
   bool _loading = false;
   bool _obscure = true;
   String? _error;
+
+  S get l10n => S.of(context)!;
 
   @override
   void dispose() {
@@ -34,7 +37,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final password = _passwordCtrl.text;
 
     if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Please enter your email and password.');
+      setState(() => _error = l10n.emailPasswordRequired);
       return;
     }
 
@@ -42,11 +45,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       await ref.read(authControllerProvider.notifier).login(email, password);
-      // GoRouter redirect fires automatically when AuthState → Authenticated
     } on DioException catch (e) {
-      setState(() => _error = _friendlyError(e));
+      if (mounted) setState(() => _error = _friendlyError(e));
     } catch (_) {
-      setState(() => _error = 'Login failed. Please try again.');
+      if (mounted) setState(() => _error = l10n.loginFailed);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -54,11 +56,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   String _friendlyError(DioException e) {
     final appErr = e.error;
-    final url = ref.read(serverUrlProvider);
-    if (appErr is UnauthorizedError) return 'Incorrect email or password.';
-    if (appErr is NetworkError)      return 'Cannot reach the server ($url).\nCheck your connection or update the Server URL in Settings.';
-    if (appErr is ServerError)       return 'Server error. Please try again later.';
-    return 'Login failed. Please try again.';
+    if (appErr is UnauthorizedError) return l10n.incorrectCredentials;
+    if (appErr is NetworkError)      return l10n.cannotReachServer;
+    if (appErr is ServerError)       return l10n.serverError;
+    return l10n.loginFailed;
   }
 
   @override
@@ -74,42 +75,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 24),
-
-                // Icon + title
                 Icon(Icons.account_balance_wallet_rounded,
                     size: 64, color: cs.primary),
                 const SizedBox(height: 16),
-                Text('Expense Tracker',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
+                Text(l10n.appName,
+                    style: Theme.of(context).textTheme.headlineSmall
                         ?.copyWith(fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 6),
-                Text('Sign in to continue',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium
+                Text(l10n.signInToAccount,
+                    style: Theme.of(context).textTheme.bodyMedium
                         ?.copyWith(color: cs.onSurfaceVariant),
                     textAlign: TextAlign.center),
-
                 const SizedBox(height: 40),
 
-                // Email field
                 TextField(
                   controller: _emailCtrl,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   onSubmitted: (_) => _passwordFocus.requestFocus(),
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email_outlined),
+                  decoration: InputDecoration(
+                    labelText: l10n.email,
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.email_outlined),
                   ),
                 ),
                 const SizedBox(height: 14),
 
-                // Password field
                 TextField(
                   controller: _passwordCtrl,
                   focusNode: _passwordFocus,
@@ -117,19 +109,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) { if (!_loading) _login(); },
                   decoration: InputDecoration(
-                    labelText: 'Password',
+                    labelText: l10n.password,
                     border: const OutlineInputBorder(),
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      icon: Icon(
-                          _obscure ? Icons.visibility_off : Icons.visibility),
+                      icon: Icon(_obscure
+                          ? Icons.visibility_off : Icons.visibility),
                       onPressed: () =>
                           setState(() => _obscure = !_obscure),
                     ),
                   ),
                 ),
 
-                // Error banner
                 if (_error != null) ...[
                   const SizedBox(height: 14),
                   Container(
@@ -155,18 +146,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 const SizedBox(height: 24),
 
-                // Sign in button
                 FilledButton(
                   onPressed: _loading ? null : _login,
                   style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16)),
                   child: _loading
-                      ? const SizedBox(
-                          height: 20, width: 20,
+                      ? const SizedBox(height: 20, width: 20,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
-                      : const Text('Sign In',
-                          style: TextStyle(
+                      : Text(l10n.signIn,
+                          style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
 
@@ -174,7 +163,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 TextButton(
                   onPressed: () => context.push('/register'),
-                  child: const Text("Don't have an account? Create one"),
+                  child: Text(l10n.noAccount),
                 ),
               ],
             ),

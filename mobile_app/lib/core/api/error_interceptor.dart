@@ -21,7 +21,10 @@ class ErrorInterceptor extends Interceptor {
         err.type == DioExceptionType.receiveTimeout ||
         err.type == DioExceptionType.sendTimeout ||
         err.type == DioExceptionType.connectionError) {
-      return const AppError.network();
+      return AppError.network(
+        originalMessage: err.message,
+        originalError: err.error,
+      );
     }
 
     final response = err.response;

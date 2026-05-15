@@ -1,6 +1,8 @@
 import 'package:expense_tracker_app/core/api/api_client.dart';
 import 'package:expense_tracker_app/core/storage/server_url_storage.dart';
+import 'package:expense_tracker_app/core/locale/locale_provider.dart';
 import 'package:expense_tracker_app/core/theme/theme_controller.dart';
+import 'package:expense_tracker_app/l10n/app_localizations.dart';
 import 'package:expense_tracker_app/features/auth/data/auth_api.dart';
 import 'package:expense_tracker_app/features/auth/providers/user_profile_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -47,6 +49,9 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           const Divider(indent: 16, endIndent: 16),
+          _SectionTitle(title: 'Language / ভাষা'),
+          _LanguageTile(),
+
           _SectionTitle(title: 'Appearance'),
           _SettingsTile(
             icon: Icons.brightness_6_rounded,
@@ -82,9 +87,6 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           const Divider(indent: 16, endIndent: 16),
-          _SectionTitle(title: 'Advanced'),
-          _ServerUrlTile(),
-
           _SectionTitle(title: 'Account'),
           _UserProfileTile(),
           _SettingsTile(
@@ -316,101 +318,52 @@ class _UserProfileTileState extends ConsumerState<_UserProfileTile> {
   }
 }
 
-class _ServerUrlTile extends ConsumerWidget {
-  const _ServerUrlTile();
+
+class _LanguageTile extends ConsumerWidget {
+  const _LanguageTile();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final url = ref.watch(serverUrlProvider);
+    final locale = ref.watch(localeProvider);
+    final isBn = locale.languageCode == 'bn';
     final cs = Theme.of(context).colorScheme;
 
     return ListTile(
       leading: Container(
         width: 40, height: 40,
         decoration: BoxDecoration(
-          color: Colors.blueGrey.withValues(alpha: 0.12),
+          color: Colors.indigo.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: const Icon(Icons.dns_rounded, color: Colors.blueGrey, size: 20),
+        child: const Icon(Icons.language_rounded, color: Colors.indigo, size: 20),
       ),
-      title: const Text('Server URL',
-          style: TextStyle(fontWeight: FontWeight.w500)),
-      subtitle: Text(url,
-          style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
-          overflow: TextOverflow.ellipsis),
-      trailing: const Icon(Icons.edit_rounded, size: 18),
-      onTap: () => _showEditUrl(context, ref, url),
-    );
-  }
-
-  void _showEditUrl(BuildContext context, WidgetRef ref, String current) {
-    final ctrl = TextEditingController(text: current);
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-          left: 20, right: 20, top: 20,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Server URL', style: Theme.of(ctx).textTheme.titleLarge),
-            const SizedBox(height: 6),
-            Text('Change only if your server address has changed.',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: ctrl,
-              autofocus: true,
-              keyboardType: TextInputType.url,
-              decoration: const InputDecoration(
-                labelText: 'Base URL',
-                hintText: 'http://18.139.46.170/v1',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.link_rounded),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text('Default: ${ServerUrlStorage.defaultUrl}',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      await ServerUrlStorage.reset();
-                      ref.read(serverUrlProvider.notifier).state =
-                          ServerUrlStorage.defaultUrl;
-                    },
-                    child: const Text('Reset to default'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () async {
-                      final url = ctrl.text.trim();
-                      if (url.isEmpty) return;
-                      Navigator.pop(ctx);
-                      await ServerUrlStorage.write(url);
-                      ref.read(serverUrlProvider.notifier).state = url;
-                    },
-                    child: const Text('Save'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-          ],
+      title: Text(S.of(context)?.language ?? 'Language / ভাষা',
+          style: const TextStyle(fontWeight: FontWeight.w500)),
+      subtitle: Text(isBn ? 'বাংলা' : 'English'),
+      trailing: SegmentedButton<String>(
+        segments: [
+          ButtonSegment(
+            value: 'bn',
+            label: Text('বাংলা',
+                style: TextStyle(fontSize: 12,
+                    color: isBn ? Colors.white : cs.onSurface)),
+          ),
+          ButtonSegment(
+            value: 'en',
+            label: Text('English',
+                style: TextStyle(fontSize: 12,
+                    color: !isBn ? Colors.white : cs.onSurface)),
+          ),
+        ],
+        selected: {locale.languageCode},
+        onSelectionChanged: (s) =>
+            () async {
+            final locale = Locale(s.first);
+            ref.read(localeProvider.notifier).state = locale;
+            await saveLocale(locale);
+          }(),
+        style: const ButtonStyle(
+          visualDensity: VisualDensity.compact,
         ),
       ),
     );

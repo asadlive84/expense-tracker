@@ -97,8 +97,6 @@ class AboutScreen extends StatelessWidget {
                   _InfoRow(label: 'App', value: 'Expense Tracker'),
                   const SizedBox(height: 10),
                   _InfoRow(label: 'Version', value: '1.0.0'),
-                  const SizedBox(height: 10),
-                  _InfoRow(label: 'Built with', value: 'Flutter · Go · PostgreSQL'),
 
                   const SizedBox(height: 40),
 

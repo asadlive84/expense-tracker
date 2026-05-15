@@ -8,6 +8,7 @@ import 'package:expense_tracker_app/shared/widgets/error_helpers.dart';
 import 'package:expense_tracker_app/shared/widgets/skeleton_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:expense_tracker_app/core/formatters/date_formatter.dart';
 import 'package:intl/intl.dart';
 
 class RemindersScreen extends ConsumerWidget {
@@ -261,7 +262,7 @@ class _ReminderCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            DateFormat('MMM d, yyyy').format(reminder.nextDueAt),
+                            DateFormatter.dateOnly(reminder.nextDueAt),
                             style: TextStyle(
                               fontSize: 12,
                               color: isOverdue ? Colors.red : cs.onSurfaceVariant,

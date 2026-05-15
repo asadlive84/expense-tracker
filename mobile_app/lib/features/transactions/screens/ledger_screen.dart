@@ -10,6 +10,7 @@ import 'package:expense_tracker_app/shared/widgets/error_helpers.dart';
 import 'package:expense_tracker_app/shared/widgets/skeleton_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:expense_tracker_app/core/formatters/date_formatter.dart';
 import 'package:intl/intl.dart';
 
 class LedgerScreen extends ConsumerStatefulWidget {
@@ -247,7 +248,7 @@ class _TxTile extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          DateFormat('MMM d, h:mm a').format(tx.occurredAt),
+                          DateFormatter.smart(tx.occurredAt),
                           style: const TextStyle(fontSize: 11, color: Colors.grey),
                         ),
                         if (tx.tags.isNotEmpty) ...[

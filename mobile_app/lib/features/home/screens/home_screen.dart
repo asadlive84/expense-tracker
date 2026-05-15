@@ -1,4 +1,5 @@
 import 'package:expense_tracker_app/core/formatters/money.dart';
+import 'package:expense_tracker_app/l10n/app_localizations.dart';
 import 'package:expense_tracker_app/features/auth/providers/user_profile_provider.dart';
 import 'package:expense_tracker_app/features/reminders/providers/reminders_provider.dart';
 import 'package:expense_tracker_app/features/reports/providers/reports_provider.dart';
@@ -10,6 +11,7 @@ import 'package:expense_tracker_app/shared/widgets/error_helpers.dart';
 import 'package:expense_tracker_app/shared/widgets/skeleton_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:expense_tracker_app/core/formatters/date_formatter.dart';
 import 'package:intl/intl.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -37,7 +39,7 @@ class HomeScreen extends ConsumerWidget {
         child: CustomScrollView(
           slivers: [
             SliverAppBar.large(
-              title: Text(userName != null ? 'Hi, $userName 👋' : 'Expense Tracker'),
+              title: Text(userName != null ? 'Hi, $userName 👋' : S.of(context)?.appName ?? 'Expense Tracker'),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.add_rounded),
@@ -123,7 +125,7 @@ class HomeScreen extends ConsumerWidget {
                     ),
 
                     // Recent transactions
-                    _SectionTitle('Recent Transactions'),
+                    _SectionTitle(S.of(context)?.recentTransactions ?? 'Recent Transactions'),
                     const SizedBox(height: 8),
                   ],
                 ),
@@ -188,7 +190,7 @@ class HomeScreen extends ConsumerWidget {
                 if (context.mounted) showErrorSnackBar(context, e);
               }
             },
-            child: const Text('Pay'),
+            child: Text(S.of(context)?.pay ?? 'Pay'),
           ),
         ],
       ),
@@ -243,7 +245,7 @@ class _AddNameCardState extends ConsumerState<_AddNameCard> {
             children: [
               Icon(Icons.waving_hand_rounded, color: cs.primary, size: 20),
               const SizedBox(width: 8),
-              Text('What should we call you?',
+              Text(S.of(context)?.whatShouldWeCallYou ?? 'What should we call you?',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: cs.onPrimaryContainer,
@@ -281,7 +283,7 @@ class _AddNameCardState extends ConsumerState<_AddNameCard> {
                     ? const SizedBox(width: 16, height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white))
-                    : const Text('Save'),
+                    : Text(S.of(context)?.save ?? 'Save'),
               ),
             ],
           ),
@@ -412,7 +414,7 @@ class _TxRow extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        DateFormat('MMM d').format(tx.occurredAt),
+                        DateFormatter.smart(tx.occurredAt),
                         style: const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                       if (tx.tags.isNotEmpty) ...[
@@ -465,7 +467,7 @@ class _ReminderRow extends StatelessWidget {
         ),
         title: Text(reminder.title, style: const TextStyle(fontWeight: FontWeight.w500)),
         subtitle: Text(
-          DateFormat('MMM d').format(reminder.nextDueAt),
+          DateFormatter.dateOnly(reminder.nextDueAt),
           style: TextStyle(
             fontSize: 12,
             color: isOverdue ? Colors.red : null,
@@ -473,7 +475,7 @@ class _ReminderRow extends StatelessWidget {
         ),
         trailing: TextButton(
           onPressed: onPay,
-          child: const Text('Pay'),
+          child: Text(S.of(context)?.pay ?? 'Pay'),
         ),
       ),
     );

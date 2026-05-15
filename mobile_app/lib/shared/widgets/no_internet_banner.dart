@@ -1,4 +1,5 @@
 import 'package:expense_tracker_app/core/network/connectivity_provider.dart';
+import 'package:expense_tracker_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -35,7 +36,7 @@ class _NoInternetOverlay extends StatelessWidget {
               Icon(Icons.wifi_off_rounded, size: 80,
                 color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
               const SizedBox(height: 24),
-              Text('No Internet Connection',
+              Text(S.of(context)?.noInternetConnection ?? 'No Internet Connection',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),

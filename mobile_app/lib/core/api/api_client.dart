@@ -12,7 +12,7 @@ final serverUrlProvider = StateProvider<String>((ref) {
   // Default — overwritten in main.dart after SharedPreferences loads
   const compiledDefault = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://hisabkhata.duckdns.org/v1',
+    defaultValue: 'https://pocketguard.store/v1',
   );
   return compiledDefault;
 });
