@@ -42,6 +42,15 @@ jobs:
           docker build --build-arg VITE_API_BASE_URL=$VITE_API_BASE_URL -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
+      - name: Copy docker-compose.prod.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.prod.yml"
+          target: "~/expense-tracker"
+
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -52,8 +61,7 @@ jobs:
             # 1. Login to ECR on the server
             aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
             
-            # 2. Create app directory if not exists
-            mkdir -p ~/expense-tracker
+            # 2. Go to app directory
             cd ~/expense-tracker
             
             # 3. Create .env file with secrets
@@ -65,9 +73,6 @@ jobs:
             echo "DB_USER=postgres" >> .env
             echo "DB_NAME=expense_tracker" >> .env
             
-            # 4. Copy the prod compose file (we could also use SCP to transfer it)
-            # For simplicity, we'll write it directly or assume it's checked out
-            
-            # 5. Pull and restart
+            # 4. Pull and restart
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
