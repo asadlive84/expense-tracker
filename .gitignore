@@ -28,3 +28,4 @@ coverage.out
 
 # Docker volumes (if mounted locally)
 pgdata/
+*.apk
