@@ -41,6 +41,8 @@ services:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable
       REDIS_URL: redis:6379
       JWT_SECRET: ${JWT_SECRET}
+      SEED_USER_EMAIL: ${SEED_USER_EMAIL}
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD}
       PORT: 8080
     # No ports exposed to the public, only accessible by frontend container via Docker network
 
