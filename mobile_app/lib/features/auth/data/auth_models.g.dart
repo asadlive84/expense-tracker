@@ -26,6 +26,7 @@ _$LoginResponseImpl _$$LoginResponseImplFromJson(Map<String, dynamic> json) =>
       name: json['name'] as String?,
       phone: json['phone'] as String?,
       email: json['email'] as String?,
+      defaultBucketId: json['default_bucket_id'] as String?,
     );
 
 Map<String, dynamic> _$$LoginResponseImplToJson(_$LoginResponseImpl instance) =>
@@ -36,6 +37,7 @@ Map<String, dynamic> _$$LoginResponseImplToJson(_$LoginResponseImpl instance) =>
       'name': instance.name,
       'phone': instance.phone,
       'email': instance.email,
+      'default_bucket_id': instance.defaultBucketId,
     };
 
 _$RegisterRequestImpl _$$RegisterRequestImplFromJson(
@@ -62,6 +64,7 @@ _$UserProfileImpl _$$UserProfileImplFromJson(Map<String, dynamic> json) =>
       email: json['email'] as String,
       name: json['name'] as String?,
       phone: json['phone'] as String?,
+      defaultBucketId: json['default_bucket_id'] as String?,
     );
 
 Map<String, dynamic> _$$UserProfileImplToJson(_$UserProfileImpl instance) =>
@@ -70,4 +73,5 @@ Map<String, dynamic> _$$UserProfileImplToJson(_$UserProfileImpl instance) =>
       'email': instance.email,
       'name': instance.name,
       'phone': instance.phone,
+      'default_bucket_id': instance.defaultBucketId,
     };

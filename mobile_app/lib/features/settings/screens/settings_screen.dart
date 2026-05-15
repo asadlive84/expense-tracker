@@ -27,10 +27,10 @@ class SettingsScreen extends ConsumerWidget {
           // Manage section
           _SectionTitle(title: 'Manage'),
           _SettingsTile(
-            icon: Icons.account_balance_wallet_rounded,
+            icon: Icons.savings_rounded,
             iconColor: cs.primary,
-            title: 'Buckets',
-            subtitle: 'Add, rename, archive money containers',
+            title: 'Money Sources',
+            subtitle: 'Add, rename, archive your money sources',
             onTap: () => context.push('/buckets'),
           ),
           _SettingsTile(

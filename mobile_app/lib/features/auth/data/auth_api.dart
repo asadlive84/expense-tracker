@@ -24,10 +24,17 @@ class AuthApi {
     return UserProfile.fromJson(response.data!);
   }
 
-  Future<UserProfile> updateProfile({String? name, String? phone}) async {
+  Future<UserProfile> updateProfile({
+    String? name,
+    String? phone,
+    String? defaultBucketId,
+    bool clearDefault = false,
+  }) async {
     final response = await _dio.patch<Map<String, dynamic>>('me', data: {
       if (name != null) 'name': name,
       if (phone != null) 'phone': phone,
+      if (defaultBucketId != null) 'default_bucket_id': defaultBucketId,
+      if (clearDefault) 'clear_default': true,
     });
     return UserProfile.fromJson(response.data!);
   }

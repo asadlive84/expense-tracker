@@ -23,6 +23,7 @@ class LoginResponse with _$LoginResponse {
     String? name,
     String? phone,
     String? email,
+    @JsonKey(name: 'default_bucket_id') String? defaultBucketId,
   }) = _LoginResponse;
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) =>
@@ -49,6 +50,7 @@ class UserProfile with _$UserProfile {
     required String email,
     String? name,
     String? phone,
+    @JsonKey(name: 'default_bucket_id') String? defaultBucketId,
   }) = _UserProfile;
 
   factory UserProfile.fromJson(Map<String, dynamic> json) =>
