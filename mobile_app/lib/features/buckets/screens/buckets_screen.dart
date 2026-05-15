@@ -107,16 +107,19 @@ class BucketsScreen extends ConsumerWidget {
   }
 
   void _showForm(BuildContext context, WidgetRef ref, {Bucket? bucket}) {
-    final nameCtrl = TextEditingController(text: bucket?.name ?? '');
+    final nameCtrl    = TextEditingController(text: bucket?.name ?? '');
     final balanceCtrl = TextEditingController(
       text: bucket == null ? '' : (bucket.startingBalancePaisa / 100).toStringAsFixed(0),
     );
-    final isEdit = bucket != null;
+    final isEdit      = bucket != null;
+    // initialise outside StatefulBuilder so it survives rebuilds
+    bool setAsDefault = ref.read(defaultMoneySourceProvider) == bucket?.id;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => Padding(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
           left: 20, right: 20, top: 20,
@@ -150,20 +153,42 @@ class BucketsScreen extends ConsumerWidget {
                 ),
               ),
             ],
-            const SizedBox(height: 20),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Set as Default',
+                  style: TextStyle(fontWeight: FontWeight.w500)),
+              subtitle: const Text('Pre-selected when adding a transaction',
+                  style: TextStyle(fontSize: 12)),
+              value: setAsDefault,
+              onChanged: (v) => setModalState(() => setAsDefault = v),
+            ),
+            const SizedBox(height: 8),
             FilledButton(
               onPressed: () async {
                 final name = nameCtrl.text.trim();
                 if (name.isEmpty) return;
                 Navigator.pop(ctx);
                 try {
+                  String? savedId;
                   if (isEdit) {
                     await ref.read(bucketsProvider.notifier).editBucket(bucket.id, name: name);
+                    savedId = bucket.id;
                     if (context.mounted) showSuccessSnackBar(context, 'Money source updated');
                   } else {
                     final bal = double.tryParse(balanceCtrl.text) ?? 0;
-                    await ref.read(bucketsProvider.notifier).create(name, (bal * 100).round());
+                    final created = await ref.read(bucketsProvider.notifier)
+                        .createAndReturn(name, (bal * 100).round());
+                    savedId = created?.id;
                     if (context.mounted) showSuccessSnackBar(context, 'Money source created');
+                  }
+                  // Apply default setting
+                  if (context.mounted && savedId != null) {
+                    if (setAsDefault) {
+                      await _setDefault(context, ref, savedId);
+                    } else if (ref.read(defaultMoneySourceProvider) == savedId) {
+                      await _clearDefault(context, ref);
+                    }
                   }
                 } catch (e) {
                   if (context.mounted) showErrorSnackBar(context, e);
@@ -174,6 +199,7 @@ class BucketsScreen extends ConsumerWidget {
             const SizedBox(height: 8),
           ],
         ),
+      ),
       ),
     );
   }

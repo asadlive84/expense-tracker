@@ -89,11 +89,19 @@ class SkeletonCard extends StatelessWidget {
   }
 }
 
-Widget skeletonList({int count = 6, bool card = false}) {
-  return Column(
-    children: List.generate(
-      count,
-      (_) => card ? const SkeletonCard() : const SkeletonListTile(),
-    ),
+/// Use [shrinkWrap: true] when inside a Row/Column that doesn't constrain height.
+/// Use [shrinkWrap: false] (default) when inside Expanded — renders as ListView.
+Widget skeletonList({int count = 6, bool card = false, bool shrinkWrap = false}) {
+  final children = List.generate(
+    count,
+    (_) => card ? const SkeletonCard() : const SkeletonListTile(),
+  );
+  if (shrinkWrap) {
+    return Column(mainAxisSize: MainAxisSize.min, children: children);
+  }
+  return ListView(
+    physics: const NeverScrollableScrollPhysics(),
+    shrinkWrap: false,
+    children: children,
   );
 }

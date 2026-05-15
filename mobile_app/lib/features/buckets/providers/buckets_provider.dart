@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:expense_tracker_app/core/api/api_client.dart';
+import 'package:expense_tracker_app/features/reports/providers/reports_provider.dart';
 import 'package:expense_tracker_app/shared/models/models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -49,13 +50,29 @@ class BucketsController extends AsyncNotifier<List<Bucket>> {
     state = await AsyncValue.guard(() => ref.read(bucketApiProvider).getBuckets());
   }
 
+  /// Invalidates dashboard report providers so the home screen refreshes instantly.
+  void _invalidateDashboard() {
+    ref.invalidate(bucketBalancesProvider);
+    ref.invalidate(monthlySummaryProvider);
+  }
+
   Future<void> create(String name, int startingBalancePaisa) async {
     await ref.read(bucketApiProvider).createBucket(name, startingBalancePaisa);
     await refresh();
+    _invalidateDashboard();
+  }
+
+  /// Creates and returns the new bucket so callers can act on its ID (e.g. set as default).
+  Future<Bucket?> createAndReturn(String name, int startingBalancePaisa) async {
+    final bucket = await ref.read(bucketApiProvider).createBucket(name, startingBalancePaisa);
+    await refresh();
+    _invalidateDashboard();
+    return bucket;
   }
 
   Future<void> editBucket(String id, {String? name, bool? archived}) async {
     await ref.read(bucketApiProvider).updateBucket(id, name: name, archived: archived);
     await refresh();
+    _invalidateDashboard();
   }
 }
