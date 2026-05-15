@@ -72,6 +72,8 @@ jobs:
             echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> .env
             echo "DB_USER=postgres" >> .env
             echo "DB_NAME=expense_tracker" >> .env
+            echo "SEED_USER_EMAIL=${{ secrets.SEED_USER_EMAIL }}" >> .env
+            echo "SEED_USER_PASSWORD=${{ secrets.SEED_USER_PASSWORD }}" >> .env
             
             # 4. Pull and restart
             docker compose -f docker-compose.prod.yml pull
