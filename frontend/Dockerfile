@@ -3,6 +3,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+# Use relative /v1 so the frontend works on any domain (HTTP or HTTPS)
+# The nginx.conf inside this container proxies /v1 → api:8080
 ARG VITE_API_BASE_URL=/v1
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build

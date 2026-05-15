@@ -22,27 +22,25 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, Tag, and Push Backend Image
+      - name: Build and Push Backend Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: expense-tracker-api
-          IMAGE_TAG: latest
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker build \
+            -t $ECR_REGISTRY/expense-tracker-api:latest .
+          docker push $ECR_REGISTRY/expense-tracker-api:latest
 
-      - name: Build, Tag, and Push Frontend Image
+      - name: Build and Push Frontend Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: expense-tracker-frontend
-          IMAGE_TAG: latest
-          VITE_API_BASE_URL: http://${{ secrets.SERVER_IP }}/v1
         run: |
           cd frontend
-          docker build --build-arg VITE_API_BASE_URL=$VITE_API_BASE_URL -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker build \
+            --build-arg VITE_API_BASE_URL=/v1 \
+            -t $ECR_REGISTRY/expense-tracker-frontend:latest .
+          docker push $ECR_REGISTRY/expense-tracker-frontend:latest
 
-      - name: Copy docker-compose.prod.yml to server
+      - name: Copy compose file to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_IP }}
@@ -51,30 +49,100 @@ jobs:
           source: "docker-compose.prod.yml"
           target: "~/expense-tracker"
 
-      - name: Deploy to EC2 via SSH
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          AWS_REGION:          ${{ secrets.AWS_REGION }}
+          AWS_ACCOUNT_ID:      ${{ secrets.AWS_ACCOUNT_ID }}
+          DB_PASSWORD:         ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET:          ${{ secrets.JWT_SECRET }}
+          SERVER_IP:           ${{ secrets.SERVER_IP }}
+          DOMAIN:              ${{ secrets.DOMAIN }}
+          CERTBOT_EMAIL:       ${{ secrets.CERTBOT_EMAIL }}
+          SEED_USER_EMAIL:     ${{ secrets.SEED_USER_EMAIL }}
+          SEED_USER_PASSWORD:  ${{ secrets.SEED_USER_PASSWORD }}
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: ECR_REGISTRY,AWS_REGION,AWS_ACCOUNT_ID,DB_PASSWORD,JWT_SECRET,SERVER_IP,DOMAIN,CERTBOT_EMAIL,SEED_USER_EMAIL,SEED_USER_PASSWORD
+          script_stop: true
           script: |
-            # 1. Login to ECR on the server
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
-            
-            # 2. Go to app directory
+            set -e
+
+            # ── STEP 1: Install nginx + certbot (only if not already installed) ─
+            if ! command -v nginx &>/dev/null; then
+              echo ">>> Installing nginx + certbot..."
+              # Stop anything on port 80 first (Docker might be using it)
+              docker ps -q --filter "publish=80" | xargs -r docker stop || true
+              sudo apt-get update -qq
+              sudo apt-get install -y nginx certbot python3-certbot-nginx
+              sudo systemctl enable nginx
+              sudo systemctl start nginx
+              echo ">>> nginx installed and started"
+            fi
+
+            # ── STEP 2: Write nginx config (overwrites every deploy = always up to date) ─
+            DOMAIN_OR_IP="${DOMAIN:-$SERVER_IP}"
+            sudo tee /etc/nginx/sites-available/expense-tracker > /dev/null <<NGINX
+server {
+    listen 80;
+    server_name ${DOMAIN_OR_IP};
+
+    location / {
+        proxy_pass         http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header   Host \$host;
+        proxy_set_header   X-Real-IP \$remote_addr;
+        proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 60s;
+    }
+}
+NGINX
+
+            sudo ln -sf /etc/nginx/sites-available/expense-tracker \
+                        /etc/nginx/sites-enabled/expense-tracker
+            sudo rm -f  /etc/nginx/sites-enabled/default
+            sudo nginx -t
+            sudo systemctl reload nginx
+
+            # ── STEP 3: Get SSL certificate (only once — certbot skips if cert exists) ─
+            if [ -n "$DOMAIN" ]; then
+              sudo certbot --nginx \
+                --non-interactive \
+                --agree-tos \
+                --email "${CERTBOT_EMAIL}" \
+                --keep-until-expiring \
+                -d "${DOMAIN}"
+              sudo systemctl reload nginx
+            fi
+
+            # ── STEP 4: ECR login ────────────────────────────────────────────
+            aws ecr get-login-password --region "${AWS_REGION}" \
+              | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+
+            # ── STEP 5: Write .env (no indentation — critical for correct parsing) ─
+            mkdir -p ~/expense-tracker
+            cat > ~/expense-tracker/.env <<ENV
+DB_PASSWORD=${DB_PASSWORD}
+JWT_SECRET=${JWT_SECRET}
+SERVER_IP=${SERVER_IP}
+AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}
+AWS_REGION=${AWS_REGION}
+DB_USER=postgres
+DB_NAME=expense_tracker
+SEED_USER_EMAIL=${SEED_USER_EMAIL}
+SEED_USER_PASSWORD=${SEED_USER_PASSWORD}
+ENV
+
+            # ── STEP 6: Pull new images + restart Docker ─────────────────────
             cd ~/expense-tracker
-            
-            # 3. Create .env file with secrets
-            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" > .env
-            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-            echo "SERVER_IP=${{ secrets.SERVER_IP }}" >> .env
-            echo "AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}" >> .env
-            echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> .env
-            echo "DB_USER=postgres" >> .env
-            echo "DB_NAME=expense_tracker" >> .env
-            echo "SEED_USER_EMAIL=${{ secrets.SEED_USER_EMAIL }}" >> .env
-            echo "SEED_USER_PASSWORD=${{ secrets.SEED_USER_PASSWORD }}" >> .env
-            
-            # 4. Pull and restart
             docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            echo ""
+            echo "✅ Deploy complete!"
+            echo "   Domain : ${DOMAIN_OR_IP}"
+            echo "   HTTPS  : $([ -n '$DOMAIN' ] && echo 'yes' || echo 'no (IP only)')"
