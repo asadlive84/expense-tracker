@@ -1,7 +1,5 @@
 import 'package:expense_tracker_app/core/api/app_error.dart';
-import 'package:expense_tracker_app/core/api/api_client.dart';
 import 'package:expense_tracker_app/features/auth/providers/auth_controller.dart';
-import 'package:expense_tracker_app/l10n/app_localizations.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,14 +13,13 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailCtrl     = TextEditingController();
-  final _passwordCtrl  = TextEditingController();
+  final _emailCtrl    = TextEditingController();
+  final _passwordCtrl = TextEditingController();
   final _passwordFocus = FocusNode();
+
   bool _loading = false;
   bool _obscure = true;
   String? _error;
-
-  S get l10n => S.of(context)!;
 
   @override
   void dispose() {
@@ -35,73 +32,89 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _login() async {
     final email    = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
-
     if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = l10n.emailPasswordRequired);
+      setState(() => _error = 'Email and password are required.');
       return;
     }
-
     setState(() { _loading = true; _error = null; });
-
     try {
       await ref.read(authControllerProvider.notifier).login(email, password);
     } on DioException catch (e) {
-      if (mounted) setState(() => _error = _friendlyError(e));
+      if (mounted) setState(() => _error = _friendly(e));
     } catch (_) {
-      if (mounted) setState(() => _error = l10n.loginFailed);
+      if (mounted) setState(() => _error = 'Login failed. Please try again.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  String _friendlyError(DioException e) {
-    final appErr = e.error;
-    if (appErr is UnauthorizedError) return l10n.incorrectCredentials;
-    if (appErr is NetworkError)      return l10n.cannotReachServer;
-    if (appErr is ServerError)       return l10n.serverError;
-    return l10n.loginFailed;
+  String _friendly(DioException e) {
+    final err = e.error;
+    if (err is UnauthorizedError) return 'Incorrect email or password.';
+    if (err is NetworkError)      return 'Cannot reach the server. Check your connection.';
+    if (err is ServerError)       return 'Server error. Please try again later.';
+    return 'Login failed. Please try again.';
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
 
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 24),
-                Icon(Icons.account_balance_wallet_rounded,
-                    size: 64, color: cs.primary),
-                const SizedBox(height: 16),
-                Text(l10n.appName,
-                    style: Theme.of(context).textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 6),
-                Text(l10n.signInToAccount,
-                    style: Theme.of(context).textTheme.bodyMedium
-                        ?.copyWith(color: cs.onSurfaceVariant),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 40),
 
+                // ── Brand mark ─────────────────────────────────────────
+                Text(
+                  'Expense Tracker',
+                  style: tt.labelMedium?.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+
+                // ── Heading ────────────────────────────────────────────
+                Text(
+                  'Sign In',
+                  style: tt.displaySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -0.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Welcome back',
+                  style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 44),
+
+                // ── Email ──────────────────────────────────────────────
                 TextField(
                   controller: _emailCtrl,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   onSubmitted: (_) => _passwordFocus.requestFocus(),
                   decoration: InputDecoration(
-                    labelText: l10n.email,
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    labelText: 'Email',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 14),
 
+                // ── Password ───────────────────────────────────────────
                 TextField(
                   controller: _passwordCtrl,
                   focusNode: _passwordFocus,
@@ -109,61 +122,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) { if (!_loading) _login(); },
                   decoration: InputDecoration(
-                    labelText: l10n.password,
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock_outline),
+                    labelText: 'Password',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     suffixIcon: IconButton(
                       icon: Icon(_obscure
-                          ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () =>
-                          setState(() => _obscure = !_obscure),
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined),
+                      onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
                 ),
 
+                // ── Error ──────────────────────────────────────────────
                 if (_error != null) ...[
                   const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: cs.errorContainer,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.error_outline,
-                            size: 18, color: cs.onErrorContainer),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(_error!,
-                              style: TextStyle(
-                                  color: cs.onErrorContainer, fontSize: 13)),
-                        ),
-                      ],
-                    ),
+                  Text(
+                    _error!,
+                    style: TextStyle(color: cs.error, fontSize: 13),
+                    textAlign: TextAlign.center,
                   ),
                 ],
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
+                // ── Sign in button ─────────────────────────────────────
                 FilledButton(
                   onPressed: _loading ? null : _login,
                   style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16)),
+                    padding: const EdgeInsets.symmetric(vertical: 17),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
                   child: _loading
-                      ? const SizedBox(height: 20, width: 20,
+                      ? const SizedBox(
+                          width: 20, height: 20,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
-                      : Text(l10n.signIn,
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      : const Text('Sign In',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600)),
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
 
+                // ── Register link ──────────────────────────────────────
                 TextButton(
                   onPressed: () => context.push('/register'),
-                  child: Text(l10n.noAccount),
+                  child: Text(
+                    "Don't have an account? Create one",
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+                  ),
                 ),
               ],
             ),

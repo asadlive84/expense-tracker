@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:expense_tracker_app/core/api/auth_interceptor.dart';
 import 'package:expense_tracker_app/core/api/error_interceptor.dart';
+import 'package:expense_tracker_app/core/api/server_status_interceptor.dart';
 import 'package:expense_tracker_app/core/storage/secure_token_storage.dart';
 import 'package:expense_tracker_app/core/storage/server_url_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +32,7 @@ final apiClientProvider = Provider<Dio>((ref) {
   );
 
   dio.interceptors.addAll([
+    ServerStatusInterceptor(ref, dio),
     AuthInterceptor(storage, () {}),
     ErrorInterceptor(),
   ]);
