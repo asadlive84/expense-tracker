@@ -45,6 +45,10 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
       _personId = tx.personId;
       _occurredAt = tx.occurredAt;
       _selectedTagIds = tx.tags.map((t) => t.id).toList();
+    } else {
+      // Pre-select the user's default money source for new transactions
+      final defaultId = ref.read(defaultMoneySourceProvider);
+      if (defaultId != null) _fromBucketId = defaultId;
     }
   }
 
@@ -85,15 +89,15 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
       return;
     }
     if (_needsFromBucket && _fromBucketId == null) {
-      showErrorSnackBar(context, 'Please select a source bucket');
+      showErrorSnackBar(context, 'Please select a source money source');
       return;
     }
     if (_needsToBucket && _toBucketId == null) {
-      showErrorSnackBar(context, 'Please select a destination bucket');
+      showErrorSnackBar(context, 'Please select a destination money source');
       return;
     }
     if (_selectedType == 'transfer' && _fromBucketId == _toBucketId) {
-      showErrorSnackBar(context, 'Source and destination buckets must be different');
+      showErrorSnackBar(context, 'Source and destination must be different');
       return;
     }
     if (_needsPerson && _personId == null) {
@@ -235,20 +239,20 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                 const Divider(),
                 const SizedBox(height: 16),
 
-                // From bucket
+                // From money source
                 if (_needsFromBucket)
                   _BucketDropdown(
-                    label: _selectedType == 'transfer' ? 'From' : 'Bucket',
+                    label: _selectedType == 'transfer' ? 'From Money Source' : 'Money Source',
                     buckets: activeBuckets,
                     value: _fromBucketId,
                     onChanged: (v) => setState(() => _fromBucketId = v),
                   ),
 
-                // To bucket
+                // To money source
                 if (_needsToBucket) ...[
                   if (_needsFromBucket) const SizedBox(height: 12),
                   _BucketDropdown(
-                    label: _selectedType == 'transfer' ? 'To' : 'Bucket',
+                    label: _selectedType == 'transfer' ? 'To Money Source' : 'Money Source',
                     buckets: activeBuckets.where((b) => b.id != _fromBucketId).toList(),
                     value: _toBucketId,
                     onChanged: (v) => setState(() => _toBucketId = v),
@@ -375,7 +379,7 @@ class _BucketDropdown extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
-        prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
+        prefixIcon: const Icon(Icons.savings_outlined),
       ),
       items: buckets.map((b) => DropdownMenuItem(
         value: b.id as String,

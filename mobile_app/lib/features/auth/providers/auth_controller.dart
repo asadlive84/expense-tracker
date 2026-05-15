@@ -1,7 +1,9 @@
 import 'package:expense_tracker_app/core/api/api_client.dart';
+import 'package:expense_tracker_app/core/storage/default_source_storage.dart';
 import 'package:expense_tracker_app/features/auth/data/auth_api.dart';
 import 'package:expense_tracker_app/features/auth/data/auth_models.dart';
 import 'package:expense_tracker_app/features/auth/providers/user_profile_provider.dart';
+import 'package:expense_tracker_app/features/buckets/providers/buckets_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 sealed class AuthState {
@@ -51,10 +53,14 @@ class AuthController extends Notifier<AuthState> {
     final response = await api.login(LoginRequest(email: email, password: password));
     await storage.writeToken(response.token, response.expiresAt);
     await profile.writeEmail(email);
-    // Sync name/phone from server if provided
     if (response.name != null && response.name!.isNotEmpty) {
       await profile.writeName(response.name!);
       ref.read(userNameProvider.notifier).setName(response.name!);
+    }
+    // Sync default money source from server
+    if (response.defaultBucketId != null) {
+      ref.read(defaultMoneySourceProvider.notifier).state = response.defaultBucketId;
+      await DefaultSourceStorage.write(response.defaultBucketId!);
     }
     state = Authenticated(response.userId ?? 'unknown');
   }

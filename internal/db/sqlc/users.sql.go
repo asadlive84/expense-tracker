@@ -15,7 +15,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, password_hash)
 VALUES ($1, $2)
-RETURNING id, email, password_hash, name, phone, created_at
+RETURNING id, email, password_hash, name, phone, default_bucket_id, created_at
 `
 
 type CreateUserParams struct {
@@ -24,12 +24,13 @@ type CreateUserParams struct {
 }
 
 type CreateUserRow struct {
-	ID           uuid.UUID          `json:"id"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"password_hash"`
-	Name         *string            `json:"name"`
-	Phone        *string            `json:"phone"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ID              uuid.UUID          `json:"id"`
+	Email           string             `json:"email"`
+	PasswordHash    string             `json:"password_hash"`
+	Name            *string            `json:"name"`
+	Phone           *string            `json:"phone"`
+	DefaultBucketID *uuid.UUID         `json:"default_bucket_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
@@ -41,24 +42,26 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		&i.PasswordHash,
 		&i.Name,
 		&i.Phone,
+		&i.DefaultBucketID,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, name, phone, created_at
+SELECT id, email, password_hash, name, phone, default_bucket_id, created_at
 FROM users
 WHERE email = $1
 `
 
 type GetUserByEmailRow struct {
-	ID           uuid.UUID          `json:"id"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"password_hash"`
-	Name         *string            `json:"name"`
-	Phone        *string            `json:"phone"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ID              uuid.UUID          `json:"id"`
+	Email           string             `json:"email"`
+	PasswordHash    string             `json:"password_hash"`
+	Name            *string            `json:"name"`
+	Phone           *string            `json:"phone"`
+	DefaultBucketID *uuid.UUID         `json:"default_bucket_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
@@ -70,24 +73,26 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 		&i.PasswordHash,
 		&i.Name,
 		&i.Phone,
+		&i.DefaultBucketID,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, name, phone, created_at
+SELECT id, email, password_hash, name, phone, default_bucket_id, created_at
 FROM users
 WHERE id = $1
 `
 
 type GetUserByIDRow struct {
-	ID           uuid.UUID          `json:"id"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"password_hash"`
-	Name         *string            `json:"name"`
-	Phone        *string            `json:"phone"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ID              uuid.UUID          `json:"id"`
+	Email           string             `json:"email"`
+	PasswordHash    string             `json:"password_hash"`
+	Name            *string            `json:"name"`
+	Phone           *string            `json:"phone"`
+	DefaultBucketID *uuid.UUID         `json:"default_bucket_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error) {
@@ -99,6 +104,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow
 		&i.PasswordHash,
 		&i.Name,
 		&i.Phone,
+		&i.DefaultBucketID,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -109,7 +115,7 @@ UPDATE users
 SET name  = COALESCE($2, name),
     phone = COALESCE($3, phone)
 WHERE id = $1
-RETURNING id, email, password_hash, name, phone, created_at
+RETURNING id, email, password_hash, name, phone, default_bucket_id, created_at
 `
 
 type UpdateUserProfileParams struct {
@@ -119,12 +125,13 @@ type UpdateUserProfileParams struct {
 }
 
 type UpdateUserProfileRow struct {
-	ID           uuid.UUID          `json:"id"`
-	Email        string             `json:"email"`
-	PasswordHash string             `json:"password_hash"`
-	Name         *string            `json:"name"`
-	Phone        *string            `json:"phone"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	ID              uuid.UUID          `json:"id"`
+	Email           string             `json:"email"`
+	PasswordHash    string             `json:"password_hash"`
+	Name            *string            `json:"name"`
+	Phone           *string            `json:"phone"`
+	DefaultBucketID *uuid.UUID         `json:"default_bucket_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
 func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (UpdateUserProfileRow, error) {
@@ -136,6 +143,72 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.PasswordHash,
 		&i.Name,
 		&i.Phone,
+		&i.DefaultBucketID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const setUserDefaultBucket = `-- name: SetUserDefaultBucket :one
+UPDATE users
+SET default_bucket_id = $2
+WHERE id = $1
+RETURNING id, email, name, phone, default_bucket_id, created_at
+`
+
+type SetUserDefaultBucketParams struct {
+	ID              uuid.UUID  `json:"id"`
+	DefaultBucketID *uuid.UUID `json:"default_bucket_id"`
+}
+
+type SetUserDefaultBucketRow struct {
+	ID              uuid.UUID          `json:"id"`
+	Email           string             `json:"email"`
+	Name            *string            `json:"name"`
+	Phone           *string            `json:"phone"`
+	DefaultBucketID *uuid.UUID         `json:"default_bucket_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) SetUserDefaultBucket(ctx context.Context, arg SetUserDefaultBucketParams) (SetUserDefaultBucketRow, error) {
+	row := q.db.QueryRow(ctx, setUserDefaultBucket, arg.ID, arg.DefaultBucketID)
+	var i SetUserDefaultBucketRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.Phone,
+		&i.DefaultBucketID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const clearUserDefaultBucket = `-- name: ClearUserDefaultBucket :one
+UPDATE users
+SET default_bucket_id = NULL
+WHERE id = $1
+RETURNING id, email, name, phone, default_bucket_id, created_at
+`
+
+type ClearUserDefaultBucketRow struct {
+	ID              uuid.UUID          `json:"id"`
+	Email           string             `json:"email"`
+	Name            *string            `json:"name"`
+	Phone           *string            `json:"phone"`
+	DefaultBucketID *uuid.UUID         `json:"default_bucket_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ClearUserDefaultBucket(ctx context.Context, id uuid.UUID) (ClearUserDefaultBucketRow, error) {
+	row := q.db.QueryRow(ctx, clearUserDefaultBucket, id)
+	var i ClearUserDefaultBucketRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.Phone,
+		&i.DefaultBucketID,
 		&i.CreatedAt,
 	)
 	return i, err

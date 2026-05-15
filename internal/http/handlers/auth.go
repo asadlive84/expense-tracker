@@ -7,6 +7,7 @@ import (
 	"github.com/asad/expense-tracker/internal/auth"
 	sqlcdb "github.com/asad/expense-tracker/internal/db/sqlc"
 	"github.com/asad/expense-tracker/internal/platform/apperror"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -60,12 +61,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"token":      token,
-		"expires_at": exp,
-		"user_id":    user.ID,
-		"name":       user.Name,
-		"phone":      user.Phone,
-		"email":      user.Email,
+		"token":             token,
+		"expires_at":        exp,
+		"user_id":           user.ID,
+		"name":              user.Name,
+		"phone":             user.Phone,
+		"email":             user.Email,
+		"default_bucket_id": user.DefaultBucketID,
 	})
 }
 
@@ -118,7 +120,6 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var respName *string
 	var respPhone *string
 
-	// Save optional name/phone immediately if provided
 	if req.Name != nil || req.Phone != nil {
 		profile, profileErr := q.UpdateUserProfile(ctx, sqlcdb.UpdateUserProfileParams{
 			ID:    user.ID,
@@ -138,12 +139,13 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, map[string]any{
-		"token":      token,
-		"expires_at": exp,
-		"user_id":    user.ID,
-		"name":       respName,
-		"phone":      respPhone,
-		"email":      user.Email,
+		"token":             token,
+		"expires_at":        exp,
+		"user_id":           user.ID,
+		"name":              respName,
+		"phone":             respPhone,
+		"email":             user.Email,
+		"default_bucket_id": nil,
 	})
 }
 
@@ -157,18 +159,21 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"user_id": user.ID,
-		"email":   user.Email,
-		"name":    user.Name,
-		"phone":   user.Phone,
+		"user_id":           user.ID,
+		"email":             user.Email,
+		"name":              user.Name,
+		"phone":             user.Phone,
+		"default_bucket_id": user.DefaultBucketID,
 	})
 }
 
 // ── Update profile ────────────────────────────────────────────────────────────
 
 type updateProfileRequest struct {
-	Name  *string `json:"name"`
-	Phone *string `json:"phone"`
+	Name            *string `json:"name"`
+	Phone           *string `json:"phone"`
+	DefaultBucketID *string `json:"default_bucket_id"` // UUID string to set default
+	ClearDefault    bool    `json:"clear_default"`      // true to clear default
 }
 
 func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +185,52 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := sqlcdb.New(h.pool).UpdateUserProfile(r.Context(), sqlcdb.UpdateUserProfileParams{
+	ctx := r.Context()
+	q := sqlcdb.New(h.pool)
+
+	// Handle default money source changes
+	if req.ClearDefault {
+		row, err := q.ClearUserDefaultBucket(ctx, userID)
+		if err != nil {
+			handleError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"user_id":           row.ID,
+			"email":             row.Email,
+			"name":              row.Name,
+			"phone":             row.Phone,
+			"default_bucket_id": row.DefaultBucketID,
+		})
+		return
+	}
+
+	if req.DefaultBucketID != nil {
+		bucketID, err := uuid.Parse(*req.DefaultBucketID)
+		if err != nil {
+			apperror.Render(w, apperror.ValidationError("invalid default_bucket_id format", nil))
+			return
+		}
+		row, err := q.SetUserDefaultBucket(ctx, sqlcdb.SetUserDefaultBucketParams{
+			ID:              userID,
+			DefaultBucketID: &bucketID,
+		})
+		if err != nil {
+			handleError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"user_id":           row.ID,
+			"email":             row.Email,
+			"name":              row.Name,
+			"phone":             row.Phone,
+			"default_bucket_id": row.DefaultBucketID,
+		})
+		return
+	}
+
+	// Name / phone update (original behaviour)
+	user, err := q.UpdateUserProfile(ctx, sqlcdb.UpdateUserProfileParams{
 		ID:    userID,
 		Name:  req.Name,
 		Phone: req.Phone,
@@ -191,9 +241,10 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"user_id": user.ID,
-		"email":   user.Email,
-		"name":    user.Name,
-		"phone":   user.Phone,
+		"user_id":           user.ID,
+		"email":             user.Email,
+		"name":              user.Name,
+		"phone":             user.Phone,
+		"default_bucket_id": user.DefaultBucketID,
 	})
 }

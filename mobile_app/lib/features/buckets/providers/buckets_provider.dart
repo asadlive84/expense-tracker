@@ -3,6 +3,9 @@ import 'package:expense_tracker_app/core/api/api_client.dart';
 import 'package:expense_tracker_app/shared/models/models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// Persisted default money source ID — overridden at startup from SharedPreferences.
+final defaultMoneySourceProvider = StateProvider<String?>((ref) => null);
+
 final bucketApiProvider = Provider((ref) => BucketApi(ref.read(apiClientProvider)));
 
 class BucketApi {

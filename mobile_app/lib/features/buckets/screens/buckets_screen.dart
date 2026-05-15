@@ -1,4 +1,6 @@
 import 'package:expense_tracker_app/core/formatters/money.dart';
+import 'package:expense_tracker_app/core/storage/default_source_storage.dart';
+import 'package:expense_tracker_app/features/auth/data/auth_api.dart';
 import 'package:expense_tracker_app/features/buckets/providers/buckets_provider.dart';
 import 'package:expense_tracker_app/features/reports/providers/reports_provider.dart';
 import 'package:expense_tracker_app/shared/widgets/error_helpers.dart';
@@ -14,13 +16,14 @@ class BucketsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bucketsAsync = ref.watch(bucketsProvider);
     final balancesAsync = ref.watch(bucketBalancesProvider);
+    final defaultId = ref.watch(defaultMoneySourceProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Buckets')),
+      appBar: AppBar(title: const Text('Money Sources')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showBucketForm(context, ref),
+        onPressed: () => _showForm(context, ref),
         icon: const Icon(Icons.add),
-        label: const Text('New Bucket'),
+        label: const Text('New Money Source'),
       ),
       body: bucketsAsync.when(
         loading: () => skeletonList(count: 5, card: true),
@@ -47,23 +50,29 @@ class BucketsScreen extends ConsumerWidget {
                 if (active.isEmpty)
                   const Padding(
                     padding: EdgeInsets.all(32),
-                    child: Center(child: Text('No buckets yet. Create one!')),
+                    child: Center(child: Text('No money sources yet. Create one!')),
                   ),
                 ...active.map((b) => _BucketCard(
                   bucket: b,
                   balance: balanceMap[b.id],
-                  onEdit: () => _showBucketForm(context, ref, bucket: b),
+                  isDefault: defaultId == b.id,
+                  onEdit: () => _showForm(context, ref, bucket: b),
                   onArchive: () => _confirmArchive(context, ref, b.id, b.name),
+                  onSetDefault: () => _setDefault(context, ref, b.id),
+                  onClearDefault: () => _clearDefault(context, ref),
                 )),
                 if (archived.isNotEmpty) ...[
                   _SectionHeader(title: 'Archived (${archived.length})'),
                   ...archived.map((b) => _BucketCard(
                     bucket: b,
                     balance: balanceMap[b.id],
-                    onEdit: () => _showBucketForm(context, ref, bucket: b),
+                    isDefault: false,
+                    onEdit: () => _showForm(context, ref, bucket: b),
                     onArchive: () => ref.read(bucketsProvider.notifier)
                         .editBucket(b.id, archived: false)
                         .catchError((Object e) => showErrorSnackBar(context, e)),
+                    onSetDefault: () {},
+                    onClearDefault: () {},
                     archiveLabel: 'Unarchive',
                   )),
                 ],
@@ -75,11 +84,32 @@ class BucketsScreen extends ConsumerWidget {
     );
   }
 
-  void _showBucketForm(BuildContext context, WidgetRef ref, {Bucket? bucket}) {
+  Future<void> _setDefault(BuildContext context, WidgetRef ref, String id) async {
+    // Update locally first for instant feedback
+    ref.read(defaultMoneySourceProvider.notifier).state = id;
+    await DefaultSourceStorage.write(id);
+    // Sync to server
+    try {
+      await ref.read(authApiProvider).updateProfile(defaultBucketId: id);
+    } catch (_) {
+      // Local update succeeded — server sync failure is non-critical
+    }
+    if (context.mounted) showSuccessSnackBar(context, 'Default money source set');
+  }
+
+  Future<void> _clearDefault(BuildContext context, WidgetRef ref) async {
+    ref.read(defaultMoneySourceProvider.notifier).state = null;
+    await DefaultSourceStorage.clear();
+    try {
+      await ref.read(authApiProvider).updateProfile(clearDefault: true);
+    } catch (_) {}
+    if (context.mounted) showSuccessSnackBar(context, 'Default cleared');
+  }
+
+  void _showForm(BuildContext context, WidgetRef ref, {Bucket? bucket}) {
     final nameCtrl = TextEditingController(text: bucket?.name ?? '');
     final balanceCtrl = TextEditingController(
-      text: bucket == null ? '' :
-        (bucket!.startingBalancePaisa / 100).toStringAsFixed(0),
+      text: bucket == null ? '' : (bucket.startingBalancePaisa / 100).toStringAsFixed(0),
     );
     final isEdit = bucket != null;
 
@@ -96,7 +126,7 @@ class BucketsScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              isEdit ? 'Edit Bucket' : 'New Bucket',
+              isEdit ? 'Edit Money Source' : 'New Money Source',
               style: Theme.of(ctx).textTheme.titleLarge,
             ),
             const SizedBox(height: 20),
@@ -104,7 +134,7 @@ class BucketsScreen extends ConsumerWidget {
               controller: nameCtrl,
               autofocus: true,
               decoration: const InputDecoration(
-                labelText: 'Bucket name',
+                labelText: 'Name',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -128,12 +158,12 @@ class BucketsScreen extends ConsumerWidget {
                 Navigator.pop(ctx);
                 try {
                   if (isEdit) {
-                    await ref.read(bucketsProvider.notifier).editBucket(bucket!.id, name: name);
-                    if (context.mounted) showSuccessSnackBar(context, 'Bucket updated');
+                    await ref.read(bucketsProvider.notifier).editBucket(bucket.id, name: name);
+                    if (context.mounted) showSuccessSnackBar(context, 'Money source updated');
                   } else {
                     final bal = double.tryParse(balanceCtrl.text) ?? 0;
                     await ref.read(bucketsProvider.notifier).create(name, (bal * 100).round());
-                    if (context.mounted) showSuccessSnackBar(context, 'Bucket created');
+                    if (context.mounted) showSuccessSnackBar(context, 'Money source created');
                   }
                 } catch (e) {
                   if (context.mounted) showErrorSnackBar(context, e);
@@ -152,7 +182,7 @@ class BucketsScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Archive Bucket?'),
+        title: const Text('Archive Money Source?'),
         content: Text('$name will be hidden from lists. Transactions are preserved.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
@@ -174,22 +204,28 @@ class BucketsScreen extends ConsumerWidget {
 class _BucketCard extends StatelessWidget {
   final Bucket bucket;
   final int? balance;
+  final bool isDefault;
   final VoidCallback onEdit;
   final VoidCallback onArchive;
+  final VoidCallback onSetDefault;
+  final VoidCallback onClearDefault;
   final String archiveLabel;
 
   const _BucketCard({
     required this.bucket,
     this.balance,
+    required this.isDefault,
     required this.onEdit,
     required this.onArchive,
+    required this.onSetDefault,
+    required this.onClearDefault,
     this.archiveLabel = 'Archive',
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final bal = balance ?? bucket!.startingBalancePaisa as int;
+    final bal = balance ?? bucket.startingBalancePaisa;
     final isPositive = bal >= 0;
 
     return Card(
@@ -198,23 +234,57 @@ class _BucketCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: cs.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(Icons.account_balance_wallet_rounded,
-                color: cs.onPrimaryContainer),
+            Stack(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: isDefault ? cs.primaryContainer : cs.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.account_balance_wallet_rounded,
+                    color: isDefault ? cs.onPrimaryContainer : cs.onSurfaceVariant),
+                ),
+                if (isDefault)
+                  Positioned(
+                    right: -2, top: -2,
+                    child: Container(
+                      width: 14, height: 14,
+                      decoration: BoxDecoration(
+                        color: cs.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: cs.surface, width: 1.5),
+                      ),
+                      child: Icon(Icons.check, size: 8, color: cs.onPrimary),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(bucket!.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                  Row(
+                    children: [
+                      Text(bucket.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                      if (isDefault) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: cs.primaryContainer,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text('Default',
+                            style: TextStyle(fontSize: 10, color: cs.primary,
+                              fontWeight: FontWeight.w600)),
+                        ),
+                      ],
+                    ],
+                  ),
                   Text(
                     MoneyFormatter.format(bal),
                     style: TextStyle(
@@ -230,9 +300,29 @@ class _BucketCard extends StatelessWidget {
               onSelected: (v) {
                 if (v == 'edit') onEdit();
                 if (v == 'archive') onArchive();
+                if (v == 'set_default') onSetDefault();
+                if (v == 'clear_default') onClearDefault();
               },
               itemBuilder: (_) => [
                 const PopupMenuItem(value: 'edit', child: Text('Rename')),
+                if (!isDefault)
+                  const PopupMenuItem(
+                    value: 'set_default',
+                    child: Row(children: [
+                      Icon(Icons.star_outline, size: 16),
+                      SizedBox(width: 8),
+                      Text('Set as Default'),
+                    ]),
+                  )
+                else
+                  const PopupMenuItem(
+                    value: 'clear_default',
+                    child: Row(children: [
+                      Icon(Icons.star, size: 16),
+                      SizedBox(width: 8),
+                      Text('Remove Default'),
+                    ]),
+                  ),
                 PopupMenuItem(value: 'archive', child: Text(archiveLabel)),
               ],
             ),

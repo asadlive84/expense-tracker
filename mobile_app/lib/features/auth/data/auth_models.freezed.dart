@@ -196,6 +196,8 @@ mixin _$LoginResponse {
   String? get name => throw _privateConstructorUsedError;
   String? get phone => throw _privateConstructorUsedError;
   String? get email => throw _privateConstructorUsedError;
+  @JsonKey(name: 'default_bucket_id')
+  String? get defaultBucketId => throw _privateConstructorUsedError;
 
   /// Serializes this LoginResponse to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -219,7 +221,8 @@ abstract class $LoginResponseCopyWith<$Res> {
       @JsonKey(name: 'expires_at') DateTime expiresAt,
       String? name,
       String? phone,
-      String? email});
+      String? email,
+      @JsonKey(name: 'default_bucket_id') String? defaultBucketId});
 }
 
 /// @nodoc
@@ -243,6 +246,7 @@ class _$LoginResponseCopyWithImpl<$Res, $Val extends LoginResponse>
     Object? name = freezed,
     Object? phone = freezed,
     Object? email = freezed,
+    Object? defaultBucketId = freezed,
   }) {
     return _then(_value.copyWith(
       token: null == token
@@ -269,6 +273,10 @@ class _$LoginResponseCopyWithImpl<$Res, $Val extends LoginResponse>
           ? _value.email
           : email // ignore: cast_nullable_to_non_nullable
               as String?,
+      defaultBucketId: freezed == defaultBucketId
+          ? _value.defaultBucketId
+          : defaultBucketId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -287,7 +295,8 @@ abstract class _$$LoginResponseImplCopyWith<$Res>
       @JsonKey(name: 'expires_at') DateTime expiresAt,
       String? name,
       String? phone,
-      String? email});
+      String? email,
+      @JsonKey(name: 'default_bucket_id') String? defaultBucketId});
 }
 
 /// @nodoc
@@ -309,6 +318,7 @@ class __$$LoginResponseImplCopyWithImpl<$Res>
     Object? name = freezed,
     Object? phone = freezed,
     Object? email = freezed,
+    Object? defaultBucketId = freezed,
   }) {
     return _then(_$LoginResponseImpl(
       token: null == token
@@ -335,6 +345,10 @@ class __$$LoginResponseImplCopyWithImpl<$Res>
           ? _value.email
           : email // ignore: cast_nullable_to_non_nullable
               as String?,
+      defaultBucketId: freezed == defaultBucketId
+          ? _value.defaultBucketId
+          : defaultBucketId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -348,7 +362,8 @@ class _$LoginResponseImpl implements _LoginResponse {
       @JsonKey(name: 'expires_at') required this.expiresAt,
       this.name,
       this.phone,
-      this.email});
+      this.email,
+      @JsonKey(name: 'default_bucket_id') this.defaultBucketId});
 
   factory _$LoginResponseImpl.fromJson(Map<String, dynamic> json) =>
       _$$LoginResponseImplFromJson(json);
@@ -367,10 +382,13 @@ class _$LoginResponseImpl implements _LoginResponse {
   final String? phone;
   @override
   final String? email;
+  @override
+  @JsonKey(name: 'default_bucket_id')
+  final String? defaultBucketId;
 
   @override
   String toString() {
-    return 'LoginResponse(token: $token, userId: $userId, expiresAt: $expiresAt, name: $name, phone: $phone, email: $email)';
+    return 'LoginResponse(token: $token, userId: $userId, expiresAt: $expiresAt, name: $name, phone: $phone, email: $email, defaultBucketId: $defaultBucketId)';
   }
 
   @override
@@ -384,13 +402,15 @@ class _$LoginResponseImpl implements _LoginResponse {
                 other.expiresAt == expiresAt) &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.phone, phone) || other.phone == phone) &&
-            (identical(other.email, email) || other.email == email));
+            (identical(other.email, email) || other.email == email) &&
+            (identical(other.defaultBucketId, defaultBucketId) ||
+                other.defaultBucketId == defaultBucketId));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, token, userId, expiresAt, name, phone, email);
+  int get hashCode => Object.hash(runtimeType, token, userId, expiresAt, name,
+      phone, email, defaultBucketId);
 
   /// Create a copy of LoginResponse
   /// with the given fields replaced by the non-null parameter values.
@@ -410,12 +430,14 @@ class _$LoginResponseImpl implements _LoginResponse {
 
 abstract class _LoginResponse implements LoginResponse {
   const factory _LoginResponse(
-      {required final String token,
-      @JsonKey(name: 'user_id') final String? userId,
-      @JsonKey(name: 'expires_at') required final DateTime expiresAt,
-      final String? name,
-      final String? phone,
-      final String? email}) = _$LoginResponseImpl;
+          {required final String token,
+          @JsonKey(name: 'user_id') final String? userId,
+          @JsonKey(name: 'expires_at') required final DateTime expiresAt,
+          final String? name,
+          final String? phone,
+          final String? email,
+          @JsonKey(name: 'default_bucket_id') final String? defaultBucketId}) =
+      _$LoginResponseImpl;
 
   factory _LoginResponse.fromJson(Map<String, dynamic> json) =
       _$LoginResponseImpl.fromJson;
@@ -434,6 +456,9 @@ abstract class _LoginResponse implements LoginResponse {
   String? get phone;
   @override
   String? get email;
+  @override
+  @JsonKey(name: 'default_bucket_id')
+  String? get defaultBucketId;
 
   /// Create a copy of LoginResponse
   /// with the given fields replaced by the non-null parameter values.
@@ -658,6 +683,8 @@ mixin _$UserProfile {
   String get email => throw _privateConstructorUsedError;
   String? get name => throw _privateConstructorUsedError;
   String? get phone => throw _privateConstructorUsedError;
+  @JsonKey(name: 'default_bucket_id')
+  String? get defaultBucketId => throw _privateConstructorUsedError;
 
   /// Serializes this UserProfile to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -679,7 +706,8 @@ abstract class $UserProfileCopyWith<$Res> {
       {@JsonKey(name: 'user_id') String userId,
       String email,
       String? name,
-      String? phone});
+      String? phone,
+      @JsonKey(name: 'default_bucket_id') String? defaultBucketId});
 }
 
 /// @nodoc
@@ -701,6 +729,7 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
     Object? email = null,
     Object? name = freezed,
     Object? phone = freezed,
+    Object? defaultBucketId = freezed,
   }) {
     return _then(_value.copyWith(
       userId: null == userId
@@ -719,6 +748,10 @@ class _$UserProfileCopyWithImpl<$Res, $Val extends UserProfile>
           ? _value.phone
           : phone // ignore: cast_nullable_to_non_nullable
               as String?,
+      defaultBucketId: freezed == defaultBucketId
+          ? _value.defaultBucketId
+          : defaultBucketId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -735,7 +768,8 @@ abstract class _$$UserProfileImplCopyWith<$Res>
       {@JsonKey(name: 'user_id') String userId,
       String email,
       String? name,
-      String? phone});
+      String? phone,
+      @JsonKey(name: 'default_bucket_id') String? defaultBucketId});
 }
 
 /// @nodoc
@@ -755,6 +789,7 @@ class __$$UserProfileImplCopyWithImpl<$Res>
     Object? email = null,
     Object? name = freezed,
     Object? phone = freezed,
+    Object? defaultBucketId = freezed,
   }) {
     return _then(_$UserProfileImpl(
       userId: null == userId
@@ -773,6 +808,10 @@ class __$$UserProfileImplCopyWithImpl<$Res>
           ? _value.phone
           : phone // ignore: cast_nullable_to_non_nullable
               as String?,
+      defaultBucketId: freezed == defaultBucketId
+          ? _value.defaultBucketId
+          : defaultBucketId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -784,7 +823,8 @@ class _$UserProfileImpl implements _UserProfile {
       {@JsonKey(name: 'user_id') required this.userId,
       required this.email,
       this.name,
-      this.phone});
+      this.phone,
+      @JsonKey(name: 'default_bucket_id') this.defaultBucketId});
 
   factory _$UserProfileImpl.fromJson(Map<String, dynamic> json) =>
       _$$UserProfileImplFromJson(json);
@@ -798,10 +838,13 @@ class _$UserProfileImpl implements _UserProfile {
   final String? name;
   @override
   final String? phone;
+  @override
+  @JsonKey(name: 'default_bucket_id')
+  final String? defaultBucketId;
 
   @override
   String toString() {
-    return 'UserProfile(userId: $userId, email: $email, name: $name, phone: $phone)';
+    return 'UserProfile(userId: $userId, email: $email, name: $name, phone: $phone, defaultBucketId: $defaultBucketId)';
   }
 
   @override
@@ -812,12 +855,15 @@ class _$UserProfileImpl implements _UserProfile {
             (identical(other.userId, userId) || other.userId == userId) &&
             (identical(other.email, email) || other.email == email) &&
             (identical(other.name, name) || other.name == name) &&
-            (identical(other.phone, phone) || other.phone == phone));
+            (identical(other.phone, phone) || other.phone == phone) &&
+            (identical(other.defaultBucketId, defaultBucketId) ||
+                other.defaultBucketId == defaultBucketId));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, userId, email, name, phone);
+  int get hashCode =>
+      Object.hash(runtimeType, userId, email, name, phone, defaultBucketId);
 
   /// Create a copy of UserProfile
   /// with the given fields replaced by the non-null parameter values.
@@ -837,10 +883,12 @@ class _$UserProfileImpl implements _UserProfile {
 
 abstract class _UserProfile implements UserProfile {
   const factory _UserProfile(
-      {@JsonKey(name: 'user_id') required final String userId,
-      required final String email,
-      final String? name,
-      final String? phone}) = _$UserProfileImpl;
+          {@JsonKey(name: 'user_id') required final String userId,
+          required final String email,
+          final String? name,
+          final String? phone,
+          @JsonKey(name: 'default_bucket_id') final String? defaultBucketId}) =
+      _$UserProfileImpl;
 
   factory _UserProfile.fromJson(Map<String, dynamic> json) =
       _$UserProfileImpl.fromJson;
@@ -854,6 +902,9 @@ abstract class _UserProfile implements UserProfile {
   String? get name;
   @override
   String? get phone;
+  @override
+  @JsonKey(name: 'default_bucket_id')
+  String? get defaultBucketId;
 
   /// Create a copy of UserProfile
   /// with the given fields replaced by the non-null parameter values.

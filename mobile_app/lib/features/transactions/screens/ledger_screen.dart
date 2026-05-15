@@ -22,12 +22,19 @@ class LedgerScreen extends ConsumerStatefulWidget {
 
 class _LedgerScreenState extends ConsumerState<LedgerScreen> {
   bool _showFilters = false;
+
+  // Transaction type filter
   String? _filterType;
+
+  // Money source / person / tag filters
   String? _filterBucketId;
   String? _filterPersonId;
   String? _filterTagId;
+
+  // Date filters — managed via _quickTime presets
   String? _filterFrom;
   String? _filterTo;
+  String? _quickTime; // 'today' | 'yesterday' | 'this_month' | 'last_month' | 'custom' | null
 
   Map<String, dynamic> get _activeFilters => {
     if (_filterType != null) 'type': _filterType,
@@ -38,10 +45,80 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
     if (_filterTo != null) 'to': _filterTo,
   };
 
-  int get _activeFilterCount => _activeFilters.length;
+  int get _activeFilterCount {
+    int n = 0;
+    if (_filterType != null) n++;
+    if (_filterBucketId != null) n++;
+    if (_filterPersonId != null) n++;
+    if (_filterTagId != null) n++;
+    if (_quickTime != null) n++; // date range counts as one filter
+    return n;
+  }
 
   void _applyFilters() {
     ref.read(transactionsProvider.notifier).applyFilters(_activeFilters);
+  }
+
+  void _applyQuickTime(String? preset) {
+    final now = DateTime.now();
+    String? from;
+    String? to;
+
+    switch (preset) {
+      case 'today':
+        from = DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
+        to = DateTime(now.year, now.month, now.day, 23, 59, 59).toUtc().toIso8601String();
+      case 'yesterday':
+        final y = now.subtract(const Duration(days: 1));
+        from = DateTime(y.year, y.month, y.day).toUtc().toIso8601String();
+        to = DateTime(y.year, y.month, y.day, 23, 59, 59).toUtc().toIso8601String();
+      case 'this_month':
+        from = DateTime(now.year, now.month, 1).toUtc().toIso8601String();
+        to = DateTime(now.year, now.month, now.day, 23, 59, 59).toUtc().toIso8601String();
+      case 'last_month':
+        final firstOfLastMonth = DateTime(now.year, now.month - 1, 1);
+        final lastOfLastMonth = DateTime(now.year, now.month, 0); // day 0 = last day of prev month
+        from = DateTime(firstOfLastMonth.year, firstOfLastMonth.month, 1).toUtc().toIso8601String();
+        to = DateTime(lastOfLastMonth.year, lastOfLastMonth.month, lastOfLastMonth.day, 23, 59, 59)
+            .toUtc().toIso8601String();
+      default:
+        from = null;
+        to = null;
+    }
+
+    setState(() {
+      _quickTime = preset;
+      _filterFrom = from;
+      _filterTo = to;
+    });
+    _applyFilters();
+  }
+
+  Future<void> _pickCustomDateRange() async {
+    final range = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: (_filterFrom != null && _filterTo != null)
+          ? DateTimeRange(
+              start: DateTime.parse(_filterFrom!).toLocal(),
+              end: DateTime.parse(_filterTo!).toLocal(),
+            )
+          : null,
+      builder: (context, child) => Theme(
+        data: Theme.of(context),
+        child: child!,
+      ),
+    );
+    if (range == null || !mounted) return;
+    setState(() {
+      _quickTime = 'custom';
+      _filterFrom = DateTime(range.start.year, range.start.month, range.start.day)
+          .toUtc().toIso8601String();
+      _filterTo = DateTime(range.end.year, range.end.month, range.end.day, 23, 59, 59)
+          .toUtc().toIso8601String();
+    });
+    _applyFilters();
   }
 
   void _clearFilters() {
@@ -52,6 +129,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       _filterTagId = null;
       _filterFrom = null;
       _filterTo = null;
+      _quickTime = null;
     });
     ref.read(transactionsProvider.notifier).applyFilters({});
   }
@@ -60,8 +138,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(transactionsProvider);
     final buckets = ref.watch(bucketsProvider).value ?? [];
+    final activeBuckets = buckets.where((b) => b.archivedAt == null).toList();
     final people = ref.watch(peopleProvider).value ?? [];
     final tags = ref.watch(tagsProvider).value ?? [];
+    final activeTags = tags.where((t) => t.archivedAt == null).toList();
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -90,21 +170,22 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
         children: [
           if (_showFilters)
             _FiltersPanel(
-              buckets: buckets,
+              buckets: activeBuckets,
               people: people,
-              tags: tags,
+              tags: activeTags,
               filterType: _filterType,
               filterBucketId: _filterBucketId,
               filterPersonId: _filterPersonId,
               filterTagId: _filterTagId,
+              quickTime: _quickTime,
               filterFrom: _filterFrom,
               filterTo: _filterTo,
               onTypeChanged: (v) { setState(() => _filterType = v); _applyFilters(); },
               onBucketChanged: (v) { setState(() => _filterBucketId = v); _applyFilters(); },
               onPersonChanged: (v) { setState(() => _filterPersonId = v); _applyFilters(); },
               onTagChanged: (v) { setState(() => _filterTagId = v); _applyFilters(); },
-              onFromChanged: (v) { setState(() => _filterFrom = v); _applyFilters(); },
-              onToChanged: (v) { setState(() => _filterTo = v); _applyFilters(); },
+              onQuickTimeChanged: _applyQuickTime,
+              onCustomDateTap: _pickCustomDateRange,
               onClear: _clearFilters,
               activeCount: _activeFilterCount,
             ),
@@ -195,6 +276,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
   }
 }
 
+// ─── Transaction tile ──────────────────────────────────────────────────────────
+
 class _TxTile extends StatelessWidget {
   final Transaction tx;
   final VoidCallback onTap;
@@ -218,7 +301,7 @@ class _TxTile extends StatelessWidget {
       ),
       confirmDismiss: (_) async {
         onDelete();
-        return false; // We handle deletion ourselves
+        return false;
       },
       child: InkWell(
         onTap: onTap,
@@ -284,6 +367,8 @@ class _TxTile extends StatelessWidget {
   }
 }
 
+// ─── Enhanced Filters Panel ────────────────────────────────────────────────────
+
 class _FiltersPanel extends StatelessWidget {
   final List<dynamic> buckets;
   final List<dynamic> people;
@@ -292,47 +377,118 @@ class _FiltersPanel extends StatelessWidget {
   final String? filterBucketId;
   final String? filterPersonId;
   final String? filterTagId;
+  final String? quickTime;
   final String? filterFrom;
   final String? filterTo;
   final ValueChanged<String?> onTypeChanged;
   final ValueChanged<String?> onBucketChanged;
   final ValueChanged<String?> onPersonChanged;
   final ValueChanged<String?> onTagChanged;
-  final ValueChanged<String?> onFromChanged;
-  final ValueChanged<String?> onToChanged;
+  final ValueChanged<String?> onQuickTimeChanged;
+  final VoidCallback onCustomDateTap;
   final VoidCallback onClear;
   final int activeCount;
 
   const _FiltersPanel({
-    required this.buckets, required this.people, required this.tags,
-    this.filterType, this.filterBucketId, this.filterPersonId,
-    this.filterTagId, this.filterFrom, this.filterTo,
-    required this.onTypeChanged, required this.onBucketChanged,
-    required this.onPersonChanged, required this.onTagChanged,
-    required this.onFromChanged, required this.onToChanged,
-    required this.onClear, required this.activeCount,
+    required this.buckets,
+    required this.people,
+    required this.tags,
+    this.filterType,
+    this.filterBucketId,
+    this.filterPersonId,
+    this.filterTagId,
+    this.quickTime,
+    this.filterFrom,
+    this.filterTo,
+    required this.onTypeChanged,
+    required this.onBucketChanged,
+    required this.onPersonChanged,
+    required this.onTagChanged,
+    required this.onQuickTimeChanged,
+    required this.onCustomDateTap,
+    required this.onClear,
+    required this.activeCount,
   });
+
+  String _customLabel() {
+    if (quickTime != 'custom' || filterFrom == null || filterTo == null) return 'Custom';
+    final from = DateTime.parse(filterFrom!).toLocal();
+    final to = DateTime.parse(filterTo!).toLocal();
+    final fmt = DateFormat('d MMM');
+    return '${fmt.format(from)} – ${fmt.format(to)}';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHigh,
-        border: Border(bottom: BorderSide(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3))),
+        color: cs.surfaceContainerHigh,
+        border: Border(
+          bottom: BorderSide(color: cs.outline.withValues(alpha: 0.3)),
+        ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Type chips
+
+          // ── Date quick presets ──────────────────────────────────────────────
           SizedBox(
-            height: 36,
+            height: 34,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                _FilterChip(label: 'All', selected: filterType == null,
-                  onTap: () => onTypeChanged(null)),
-                ...txTypeConfigs.entries.map((e) => _FilterChip(
+                _Chip(
+                  label: 'All Time',
+                  selected: quickTime == null,
+                  onTap: () => onQuickTimeChanged(null),
+                ),
+                _Chip(
+                  label: 'Today',
+                  selected: quickTime == 'today',
+                  onTap: () => onQuickTimeChanged('today'),
+                ),
+                _Chip(
+                  label: 'Yesterday',
+                  selected: quickTime == 'yesterday',
+                  onTap: () => onQuickTimeChanged('yesterday'),
+                ),
+                _Chip(
+                  label: 'This Month',
+                  selected: quickTime == 'this_month',
+                  onTap: () => onQuickTimeChanged('this_month'),
+                ),
+                _Chip(
+                  label: 'Last Month',
+                  selected: quickTime == 'last_month',
+                  onTap: () => onQuickTimeChanged('last_month'),
+                ),
+                _Chip(
+                  label: _customLabel(),
+                  selected: quickTime == 'custom',
+                  icon: Icons.date_range_rounded,
+                  onTap: onCustomDateTap,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // ── Transaction type chips ──────────────────────────────────────────
+          SizedBox(
+            height: 34,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _Chip(
+                  label: 'All',
+                  selected: filterType == null,
+                  onTap: () => onTypeChanged(null),
+                ),
+                ...txTypeConfigs.entries.map((e) => _Chip(
                   label: e.value.label,
                   selected: filterType == e.key,
                   color: e.value.color,
@@ -341,36 +497,60 @@ class _FiltersPanel extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 10),
+
+          const SizedBox(height: 8),
+
+          // ── Money Source + Person dropdowns ─────────────────────────────────
           Row(
             children: [
-              Expanded(child: _DropdownFilter(
-                hint: 'Bucket',
-                value: filterBucketId,
-                items: buckets.map((b) => DropdownMenuItem(
-                  value: b.id as String, child: Text(b.name as String))).toList(),
-                onChanged: onBucketChanged,
-              )),
+              Expanded(
+                child: _DropdownFilter(
+                  hint: 'Money Source',
+                  value: filterBucketId,
+                  items: buckets.map((b) => DropdownMenuItem(
+                    value: b.id as String,
+                    child: Text(b.name as String),
+                  )).toList(),
+                  onChanged: onBucketChanged,
+                ),
+              ),
               const SizedBox(width: 8),
-              Expanded(child: _DropdownFilter(
-                hint: 'Person',
-                value: filterPersonId,
-                items: people.map((p) => DropdownMenuItem(
-                  value: p.id as String, child: Text(p.name as String))).toList(),
-                onChanged: onPersonChanged,
-              )),
-              const SizedBox(width: 8),
-              Expanded(child: _DropdownFilter(
-                hint: 'Tag',
-                value: filterTagId,
-                items: tags.map((t) => DropdownMenuItem(
-                  value: t.id as String, child: Text(t.name as String))).toList(),
-                onChanged: onTagChanged,
-              )),
+              Expanded(
+                child: _DropdownFilter(
+                  hint: 'Person',
+                  value: filterPersonId,
+                  items: people.map((p) => DropdownMenuItem(
+                    value: p.id as String,
+                    child: Text(p.name as String),
+                  )).toList(),
+                  onChanged: onPersonChanged,
+                ),
+              ),
             ],
           ),
-          if (activeCount > 0) ...[
+
+          // ── Tag chips ───────────────────────────────────────────────────────
+          if (tags.isNotEmpty) ...[
             const SizedBox(height: 8),
+            SizedBox(
+              height: 34,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: tags.map((t) => _Chip(
+                  label: t.name as String,
+                  selected: filterTagId == (t.id as String),
+                  color: cs.secondary,
+                  onTap: () => onTagChanged(
+                    filterTagId == (t.id as String) ? null : t.id as String,
+                  ),
+                )).toList(),
+              ),
+            ),
+          ],
+
+          // ── Clear button ────────────────────────────────────────────────────
+          if (activeCount > 0) ...[
+            const SizedBox(height: 6),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton.icon(
@@ -378,7 +558,7 @@ class _FiltersPanel extends StatelessWidget {
                 icon: const Icon(Icons.close, size: 14),
                 label: Text('Clear $activeCount filter${activeCount > 1 ? "s" : ""}'),
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   visualDensity: VisualDensity.compact,
                 ),
               ),
@@ -390,14 +570,22 @@ class _FiltersPanel extends StatelessWidget {
   }
 }
 
-class _FilterChip extends StatelessWidget {
+// ─── Chip widget ───────────────────────────────────────────────────────────────
+
+class _Chip extends StatelessWidget {
   final String label;
   final bool selected;
   final Color? color;
+  final IconData? icon;
   final VoidCallback onTap;
 
-  const _FilterChip({required this.label, required this.selected,
-    this.color, required this.onTap});
+  const _Chip({
+    required this.label,
+    required this.selected,
+    this.color,
+    this.icon,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -406,20 +594,34 @@ class _FilterChip extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(right: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: selected ? c : c.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(label, style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: selected ? Colors.white : c,
-        )),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 13, color: selected ? Colors.white : c),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: selected ? Colors.white : c,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
+// ─── Dropdown filter ───────────────────────────────────────────────────────────
 
 class _DropdownFilter extends StatelessWidget {
   final String hint;
@@ -427,8 +629,12 @@ class _DropdownFilter extends StatelessWidget {
   final List<DropdownMenuItem<String>> items;
   final ValueChanged<String?> onChanged;
 
-  const _DropdownFilter({required this.hint, this.value,
-    required this.items, required this.onChanged});
+  const _DropdownFilter({
+    required this.hint,
+    this.value,
+    required this.items,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -442,8 +648,10 @@ class _DropdownFilter extends StatelessWidget {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       ),
       items: [
-        DropdownMenuItem(value: null, child: Text(hint,
-          style: const TextStyle(color: Colors.grey))),
+        DropdownMenuItem(
+          value: null,
+          child: Text(hint, style: const TextStyle(color: Colors.grey)),
+        ),
         ...items,
       ],
       onChanged: onChanged,
