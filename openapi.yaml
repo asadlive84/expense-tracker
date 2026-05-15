@@ -139,21 +139,44 @@ paths:
   /me:
     get:
       operationId: getMe
-      summary: Whoami
-      description: Returns the user_id extracted from the JWT. Useful for verifying a token.
+      summary: Get profile
+      description: Returns the authenticated user's profile including name and phone.
       tags: [auth]
       responses:
         "200":
-          description: Authenticated user info
+          description: User profile
           content:
             application/json:
               schema:
-                type: object
-                required: [user_id]
-                properties:
-                  user_id:
-                    type: string
-                    format: uuid
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    patch:
+      operationId: updateProfile
+      summary: Update profile
+      description: |
+        Update name and/or phone. Both fields are optional — omit to leave unchanged.
+        Passing `null` explicitly clears the field.
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+            examples:
+              set_name:
+                value: { name: "Karim Hossain" }
+              set_both:
+                value: { name: "Karim Hossain", phone: "+8801711000000" }
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
         "401":
           $ref: "#/components/responses/Unauthorized"
 
@@ -1177,6 +1200,20 @@ components:
           type: string
           format: date-time
           description: UTC timestamp when the token expires (30 days from issue).
+        user_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+          description: User's display name if set, otherwise null.
+        phone:
+          type: string
+          nullable: true
+          description: User's phone number if set, otherwise null.
 
     RegisterRequest:
       type: object
@@ -1190,6 +1227,46 @@ components:
           type: string
           minLength: 8
           example: mysecretpass
+        name:
+          type: string
+          nullable: true
+          description: Optional display name.
+          example: Karim Hossain
+        phone:
+          type: string
+          nullable: true
+          description: Optional phone number (any format).
+          example: "+8801711000000"
+
+    UserProfile:
+      type: object
+      required: [user_id, email]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          nullable: true
+          description: Display name. Null if not set.
+        phone:
+          type: string
+          nullable: true
+          description: Phone number. Null if not set.
+
+    UpdateProfileRequest:
+      type: object
+      description: All fields optional. Omit to leave unchanged.
+      properties:
+        name:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
 
     # ── Bucket ────────────────────────────────────────────────────────────────
 

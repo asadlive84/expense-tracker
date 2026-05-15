@@ -62,6 +62,7 @@ func NewRouter(pool *pgxpool.Pool, redisCache *cache.Cache, jwtSecret string, lo
 		r.Use(auth.RequireAuth(jwtSecret))
 
 		r.Get("/v1/me", authH.Me)
+		r.Patch("/v1/me", authH.UpdateProfile)
 
 		r.Get("/v1/buckets", bucketH.List)
 		r.Post("/v1/buckets", bucketH.Create)
