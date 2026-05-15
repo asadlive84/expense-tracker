@@ -1,4 +1,5 @@
 import 'package:expense_tracker_app/core/api/app_error.dart';
+import 'package:expense_tracker_app/core/api/api_client.dart';
 import 'package:expense_tracker_app/features/auth/providers/auth_controller.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -53,8 +54,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   String _friendlyError(DioException e) {
     final appErr = e.error;
+    final url = ref.read(serverUrlProvider);
     if (appErr is UnauthorizedError) return 'Incorrect email or password.';
-    if (appErr is NetworkError)      return 'Cannot reach the server. Check your connection.';
+    if (appErr is NetworkError)      return 'Cannot reach the server ($url).\nCheck your connection or update the Server URL in Settings.';
     if (appErr is ServerError)       return 'Server error. Please try again later.';
     return 'Login failed. Please try again.';
   }

@@ -38,23 +38,21 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable
-      REDIS_URL: redis:6379
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD}@db:5432/${DB_NAME:-expense_tracker}?sslmode=disable
+      REDIS_URL: redis://redis:6379          # FIX: was "redis:6379" (missing scheme)
       JWT_SECRET: ${JWT_SECRET}
       SEED_USER_EMAIL: ${SEED_USER_EMAIL}
       SEED_USER_PASSWORD: ${SEED_USER_PASSWORD}
-      PORT: 8080
-    # No ports exposed to the public, only accessible by frontend container via Docker network
+      PORT: "8080"
+      MIGRATIONS_PATH: /app/migrations
 
   frontend:
     image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/expense-tracker-frontend:latest
     container_name: expense-tracker-frontend
     restart: always
     ports:
-      - "80:80"
-    environment:
-      # This tells the frontend where the API is located (your EC2 IP)
-      VITE_API_BASE_URL: http://${SERVER_IP}/v1
+      # FIX: bind to localhost only — host nginx handles public traffic + SSL
+      - "127.0.0.1:3000:80"
     depends_on:
       - api
 

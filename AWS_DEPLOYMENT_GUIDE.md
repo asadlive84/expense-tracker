@@ -59,6 +59,10 @@ Add these one by one:
 | `EC2_SSH_KEY` | Paste the **ENTIRE** content of your `.pem` file |
 | `DB_PASSWORD` | A strong password for your database |
 | `JWT_SECRET` | A long random string for security |
+| `SEED_USER_EMAIL` | Your login email for the app |
+| `SEED_USER_PASSWORD` | Your login password for the app |
+| `DOMAIN` | Your domain name e.g. `expensetracker.duckdns.org` (needed for HTTPS) |
+| `CERTBOT_EMAIL` | Your email for SSL certificate renewal notices |
 
 ---
 
