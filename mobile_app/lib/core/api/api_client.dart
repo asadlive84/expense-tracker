@@ -12,7 +12,7 @@ final serverUrlProvider = StateProvider<String>((ref) {
   // Default — overwritten in main.dart after SharedPreferences loads
   const compiledDefault = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://18.139.46.170/v1',
+    defaultValue: 'https://hisabkhata.duckdns.org/v1',
   );
   return compiledDefault;
 });
