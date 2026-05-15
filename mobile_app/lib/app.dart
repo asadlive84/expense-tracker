@@ -13,14 +13,17 @@ class ExpenseTrackerApp extends ConsumerWidget {
     final themeMode = ref.watch(themeControllerProvider);
     final router = ref.watch(appRouter);
 
-    return NoInternetWrapper(
-      child: MaterialApp.router(
-        title: 'Expense Tracker',
-        theme: AppTheme.light(),
-        darkTheme: AppTheme.dark(),
-        themeMode: themeMode,
-        routerConfig: router,
-        debugShowCheckedModeBanner: false,
+    return MaterialApp.router(
+      title: 'Expense Tracker',
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: themeMode,
+      routerConfig: router,
+      debugShowCheckedModeBanner: false,
+      // NoInternetWrapper lives INSIDE MaterialApp so it has
+      // Theme + Directionality — placing it outside causes a crash.
+      builder: (context, child) => NoInternetWrapper(
+        child: child ?? const SizedBox.shrink(),
       ),
     );
   }
