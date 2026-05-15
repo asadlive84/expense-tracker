@@ -1,4 +1,5 @@
 import 'package:expense_tracker_app/features/auth/providers/auth_controller.dart';
+import 'package:expense_tracker_app/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -64,7 +65,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               ),
               const SizedBox(height: 24),
               Text(
-                'Expense Tracker',
+                S.of(context)!.appName,
                 style: TextStyle(
                   color: cs.onPrimary,
                   fontSize: 28,
@@ -74,7 +75,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Your personal finance companion',
+                S.of(context)!.appTagline,
                 style: TextStyle(
                   color: cs.onPrimary.withValues(alpha: 0.7),
                   fontSize: 14,

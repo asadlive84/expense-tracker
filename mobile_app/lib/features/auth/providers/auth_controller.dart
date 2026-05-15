@@ -35,6 +35,8 @@ class AuthController extends Notifier<AuthState> {
     final expiry = await storage.readExpiry();
 
     if (token != null && (expiry == null || expiry.isAfter(DateTime.now()))) {
+      // Reload saved name into provider so home screen greets correctly
+      ref.invalidate(userNameProvider);
       state = const Authenticated('me');
     } else {
       state = const Unauthenticated();

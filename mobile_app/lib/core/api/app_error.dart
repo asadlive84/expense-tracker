@@ -6,7 +6,8 @@ sealed class AppError {
   const factory AppError.notFound(String message) = NotFoundError;
   const factory AppError.conflict(String message) = ConflictError;
   const factory AppError.server() = ServerError;
-  const factory AppError.network() = NetworkError;
+  factory AppError.network({String? originalMessage, Object? originalError}) =>
+      NetworkError(originalMessage: originalMessage, originalError: originalError);
   const factory AppError.unknown(Object error) = UnknownError;
 }
 
@@ -34,7 +35,9 @@ class ServerError extends AppError {
 }
 
 class NetworkError extends AppError {
-  const NetworkError();
+  final String? originalMessage;
+  final Object? originalError;
+  const NetworkError({this.originalMessage, this.originalError});
 }
 
 class UnknownError extends AppError {

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:expense_tracker_app/core/api/api_client.dart';
+import 'package:expense_tracker_app/features/reports/providers/reports_provider.dart';
 import 'package:expense_tracker_app/shared/models/models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -107,16 +108,25 @@ class TransactionsController extends AsyncNotifier<TransactionState> {
 
   Future<void> create(CreateTransactionRequest request) async {
     await ref.read(transactionApiProvider).createTransaction(request);
-    ref.invalidateSelf();
+    _invalidateReports();
   }
 
   Future<void> editTransaction(String id, CreateTransactionRequest request) async {
     await ref.read(transactionApiProvider).updateTransaction(id, request);
-    ref.invalidateSelf();
+    _invalidateReports();
   }
 
   Future<void> delete(String id) async {
     await ref.read(transactionApiProvider).deleteTransaction(id);
+    _invalidateReports();
+  }
+
+  // Invalidate transactions list + all dashboard reports so they refresh instantly
+  void _invalidateReports() {
     ref.invalidateSelf();
+    ref.invalidate(bucketBalancesProvider);
+    ref.invalidate(personBalancesProvider);
+    ref.invalidate(tagTotalsProvider);
+    ref.invalidate(monthlySummaryProvider);
   }
 }

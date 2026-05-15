@@ -1,0 +1,314 @@
+{
+  "@@locale": "en",
+
+  "appName": "Expense Tracker",
+  "appTagline": "Your personal finance companion",
+
+  "signIn": "Sign In",
+  "signInToAccount": "Sign in to continue",
+  "signUp": "Sign Up",
+  "createAccount": "Create Account",
+  "startTracking": "Start tracking your finances",
+  "email": "Email",
+  "password": "Password",
+  "passwordMin": "Password (min 8 characters)",
+  "confirmPassword": "Confirm password",
+  "yourName": "Your name (optional)",
+  "phoneNumber": "Phone number (optional)",
+  "noAccount": "Don't have an account? Create one",
+  "haveAccount": "Already have an account? Sign in",
+  "loginFailed": "Login failed. Please try again.",
+  "registerFailed": "Registration failed. Please try again.",
+  "incorrectCredentials": "Incorrect email or password.",
+  "emailAlreadyRegistered": "This email is already registered. Please sign in.",
+  "cannotReachServer": "Cannot reach the server. Check your connection.",
+  "serverError": "Server error. Please try again later.",
+  "passwordsDoNotMatch": "Passwords do not match.",
+  "passwordTooShort": "Password must be at least 8 characters.",
+  "emailPasswordRequired": "Email and password are required.",
+
+  "dashboard": "Dashboard",
+  "ledger": "Ledger",
+  "insights": "Insights",
+  "reminders": "Reminders",
+  "settings": "Settings",
+
+  "hi": "Hi, {name} 👋",
+  "@hi": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "expenseTracker": "Expense Tracker",
+  "totalBalance": "Total Balance",
+  "incomeThisMonth": "Income (this month)",
+  "expensesThisMonth": "Expenses (this month)",
+  "netThisMonth": "Net (this month)",
+  "recentTransactions": "Recent Transactions",
+  "upcoming": "Upcoming",
+  "noTransactionsYet": "No transactions yet. Create your first one!",
+  "noUpcomingReminders": "No upcoming reminders",
+  "whatShouldWeCallYou": "What should we call you?",
+  "save": "Save",
+  "pay": "Pay",
+  "skip": "Skip",
+  "newTransaction": "New Transaction",
+
+  "transactions": "Transactions",
+  "allMoneyMovements": "All your money movements",
+  "add": "Add",
+  "allTypes": "All Types",
+  "allBuckets": "All Buckets",
+  "allPeople": "All People",
+  "allTags": "All Tags",
+  "filters": "Filters",
+  "clearFilters": "Clear filters",
+  "noTransactionsFound": "No transactions found",
+  "adjustFilters": "Try adjusting your filters or create a new transaction.",
+  "deleteTransaction": "Delete Transaction?",
+  "deleteTransactionNote": "A reversal entry will be inserted. The original is kept.",
+  "transactionDeleted": "Transaction deleted",
+  "transactionUpdated": "Transaction updated",
+  "transactionSaved": "Transaction saved",
+
+  "editTransaction": "Edit Transaction",
+  "newTransactionTitle": "New Transaction",
+  "amount": "Amount",
+  "note": "Note (optional)",
+  "dateTime": "Date & Time",
+  "tags": "Tags",
+  "fromBucket": "From Bucket",
+  "toBucket": "To Bucket",
+  "from": "From",
+  "to": "To",
+  "person": "Person",
+  "saveTransaction": "Save Transaction",
+  "updateTransaction": "Update Transaction",
+  "enterValidAmount": "Please enter a valid amount",
+  "selectSourceBucket": "Please select a source bucket",
+  "selectDestBucket": "Please select a destination bucket",
+  "selectPerson": "Please select a person",
+  "bucketsCannotBeSame": "Source and destination buckets must be different",
+
+  "expense": "Expense",
+  "income": "Income",
+  "transfer": "Transfer",
+  "loanGiven": "Loan Given",
+  "loanTaken": "Loan Taken",
+  "repaymentReceived": "Repayment In",
+  "repaymentPaid": "Repayment Out",
+
+  "buckets": "Buckets",
+  "newBucket": "New Bucket",
+  "bucketName": "Bucket name",
+  "startingBalance": "Starting balance (৳)",
+  "bucketCreated": "Bucket created",
+  "bucketUpdated": "Bucket updated",
+  "archived": "Archived ({count})",
+  "@archived": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "archiveBucket": "Archive Bucket?",
+  "archiveBucketNote": "{name} will be hidden from lists. Transactions are preserved.",
+  "@archiveBucketNote": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "archive": "Archive",
+  "unarchive": "Unarchive",
+  "rename": "Rename",
+  "noBucketsYet": "No buckets yet. Create one!",
+
+  "people": "People",
+  "addPerson": "Add Person",
+  "personName": "Name",
+  "personAdded": "Added",
+  "personUpdated": "Updated",
+  "owesYou": "Owes you {amount}",
+  "@owesYou": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "youOwe": "You owe {amount}",
+  "@youOwe": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "settled": "Settled",
+  "noPeopleYet": "No people yet.",
+
+  "tagsTitle": "Tags",
+  "newTag": "New Tag",
+  "tagName": "Tag name",
+  "tagNameHint": "e.g. food, transport, family",
+  "tagCreated": "Tag created",
+  "tagRenamed": "Tag renamed",
+  "thisMonth": "this month",
+  "noTagsYet": "No tags yet.",
+
+  "insightsTitle": "Insights",
+  "incomeVsExpense": "Income vs Expense",
+  "last6Months": "Last 6 months",
+  "spendingByCategory": "Spending by Category",
+  "bucketBalances": "Bucket Balances",
+  "live": "Live",
+  "peopleBalances": "People Balances",
+  "outstandingLoans": "Outstanding loans",
+  "allSettledUp": "All settled up! 🎉",
+  "noTaggedExpenses": "No tagged expenses this month",
+  "thisMonthChip": "This Month",
+  "lastMonth": "Last Month",
+  "custom": "Custom",
+  "totalLabel": "Total",
+
+  "remindersTitle": "Reminders",
+  "newReminder": "New Reminder",
+  "editReminder": "Edit Reminder",
+  "noReminders": "No reminders yet",
+  "tapToCreate": "Tap + to create one",
+  "overdue": "Overdue ({count})",
+  "@overdue": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "dueSoon": "Due Soon ({count})",
+  "@dueSoon": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "upcomingSection": "Upcoming ({count})",
+  "@upcomingSection": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "reminderTitle": "Title *",
+  "reminderAmount": "Amount ৳ (optional)",
+  "transactionType": "Transaction Type",
+  "recurrence": "Recurrence",
+  "once": "Once",
+  "weekly": "Weekly",
+  "monthly": "Monthly",
+  "yearly": "Yearly",
+  "dayOfMonth": "Day of month (optional)",
+  "sameasStartDate": "Same as start date",
+  "nextDueDate": "Next due date",
+  "linkedBucket": "Linked bucket (optional)",
+  "linkedPerson": "Linked person (optional)",
+  "none": "None",
+  "createReminder": "Create Reminder",
+  "updateReminder": "Update Reminder",
+  "reminderCreated": "Reminder created",
+  "reminderUpdated": "Reminder updated",
+  "titleRequired": "Title is required",
+  "payReminder": "Pay: {title}",
+  "@payReminder": {
+    "placeholders": {
+      "title": { "type": "String" }
+    }
+  },
+  "willCreateTransaction": "Will create a {type} transaction",
+  "@willCreateTransaction": {
+    "placeholders": {
+      "type": { "type": "String" }
+    }
+  },
+  "amountLabel": "Amount (৳)",
+  "noteOptional": "Note (optional)",
+  "markAsPaid": "Mark as Paid",
+  "paymentRecorded": "Payment recorded!",
+  "skipped": "Skipped",
+  "skipReminder": "Skip \"{title}\"?",
+  "@skipReminder": {
+    "placeholders": {
+      "title": { "type": "String" }
+    }
+  },
+  "nextDueWillBe": "Next due date will be: {date}",
+  "@nextDueWillBe": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "amountNotSet": "Amount not set",
+
+  "settingsTitle": "Settings",
+  "manage": "Manage",
+  "bucketsSubtitle": "Add, rename, archive money containers",
+  "peopleSubtitle": "Manage loan/repayment contacts",
+  "tagsSubtitle": "Manage spending categories",
+  "appearance": "Appearance",
+  "theme": "Theme",
+  "lightTheme": "Light",
+  "darkTheme": "Dark",
+  "systemTheme": "System",
+  "about": "About",
+  "developer": "Developer",
+  "developerSubtitle": "Asaduzzaman Sohel · @asadlive84",
+  "advanced": "Advanced",
+  "serverUrl": "Server URL",
+  "serverUrlSubtitle": "Change only if your server address changed",
+  "account": "Account",
+  "reportIssue": "Report an Issue",
+  "reportIssueSubtitle": "Send feedback or bug report via email",
+  "signOut": "Sign Out",
+  "signOutSubtitle": "Clear session and return to login",
+  "signOutConfirm": "Sign Out?",
+  "signOutNote": "Your session will be cleared.",
+  "cancel": "Cancel",
+  "yourName2": "Your Name",
+  "addYourName": "Add your name",
+  "nameAndPhone": "Name & phone — tap to edit",
+  "editProfile": "Edit Profile",
+  "fullName": "Full name",
+  "phoneOptional": "Phone number (optional)",
+  "changesSavedToAccount": "Changes are saved to your account.",
+  "resetToDefault": "Reset to default",
+  "baseUrl": "Base URL",
+  "baseUrlHint": "http://your-server/v1",
+  "default2": "Default: {url}",
+  "@default2": {
+    "placeholders": {
+      "url": { "type": "String" }
+    }
+  },
+
+  "aboutTitle": "About",
+  "developerDesigner": "Developer & Designer",
+  "emailLabel": "Email",
+  "socialLabel": "Social",
+  "appLabel": "App",
+  "version": "Version",
+  "builtWith": "Built with",
+  "madeWithLove": "Made with ❤️ in Bangladesh",
+  "copyright": "© 2026 Asaduzzaman Sohel",
+
+  "noInternetConnection": "No Internet Connection",
+  "checkConnection": "Please check your Wi-Fi or mobile data\nand try again.",
+  "serverUnavailable": "Server Unavailable",
+  "serverUnavailableNote": "We're having trouble reaching the server.\nThis is usually temporary — we'll retry\nautomatically every 15 seconds.",
+  "retryingAutomatically": "Retrying automatically…",
+  "reportThisIssue": "Report this issue",
+
+  "saved": "Saved",
+  "updated": "Updated",
+  "deleted": "Deleted",
+  "archived2": "Archived",
+  "restored": "Restored",
+  "somethingWentWrong": "Something went wrong. Please try again.",
+  "retry": "Retry",
+  "failedToLoad": "Failed to load",
+  "edit": "Edit",
+  "delete": "Delete",
+  "confirm": "Confirm",
+  "language": "Language",
+  "bangla": "বাংলা",
+  "english": "English"
+}

@@ -1,6 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _defaultUrl = 'https://hisabkhata.duckdns.org/v1';
+const _defaultUrl = 'https://pocketguard.store/v1';
 const _key = 'server_base_url';
 
 class ServerUrlStorage {
