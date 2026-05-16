@@ -74,24 +74,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   (String, String) _computeRange() {
     final now = DateTime.now();
 
+    // Midnight of a local date → UTC (inclusive lower bound).
     String startOf(DateTime d) =>
         DateTime(d.year, d.month, d.day).toUtc().toIso8601String();
-    String endOf(DateTime d) =>
-        DateTime(d.year, d.month, d.day, 23, 59, 59).toUtc().toIso8601String();
+
+    // Midnight of the NEXT local day → UTC (exclusive upper bound).
+    // The SQL uses `occurred_at < $to`, so "start of next day" captures the
+    // entire 24-hour block with no gaps and no 23:59:59 ambiguity.
+    String exclusiveEndOf(DateTime d) =>
+        DateTime(d.year, d.month, d.day + 1).toUtc().toIso8601String();
 
     switch (_timeframe) {
       case 'yesterday':
         final y = DateTime(now.year, now.month, now.day - 1);
-        return (startOf(y), endOf(y));
+        return (startOf(y), exclusiveEndOf(y));
       case 'month':
-        return (startOf(DateTime(now.year, now.month, 1)), endOf(now));
+        return (startOf(DateTime(now.year, now.month, 1)), exclusiveEndOf(now));
       case 'custom':
         if (_customFrom != null && _customTo != null) {
-          return (startOf(_customFrom!), endOf(_customTo!));
+          return (startOf(_customFrom!), exclusiveEndOf(_customTo!));
         }
-        return (startOf(now), endOf(now)); // fallback to today
+        return (startOf(now), exclusiveEndOf(now));
       default: // today
-        return (startOf(now), endOf(now));
+        return (startOf(now), exclusiveEndOf(now));
     }
   }
 
@@ -1517,11 +1522,12 @@ class _SourceDetailSheetState extends ConsumerState<_SourceDetailSheet> {
 
   String get _toUtc {
     final now = DateTime.now();
+    // Exclusive upper bound: start of NEXT day matches SQL's `occurred_at < $to`.
     return switch (_period) {
-      'today'      => DateTime(now.year, now.month, now.day, 23, 59, 59).toUtc().toIso8601String(),
-      'last_month' => DateTime(now.year, now.month, 0, 23, 59, 59).toUtc().toIso8601String(),
+      'today'      => DateTime(now.year, now.month, now.day + 1).toUtc().toIso8601String(),
+      'last_month' => DateTime(now.year, now.month, 1).toUtc().toIso8601String(), // start of current month = exclusive end of last month
       'all'        => DateTime(now.year + 1).toUtc().toIso8601String(),
-      _            => DateTime(now.year, now.month, now.day, 23, 59, 59).toUtc().toIso8601String(),
+      _            => DateTime(now.year, now.month, now.day + 1).toUtc().toIso8601String(),
     };
   }
 

@@ -51,11 +51,11 @@ final tagTotalsProvider = FutureProvider.family((ref, String range) {
 
 // Today's income/expense summary using local timezone boundaries.
 // Key: "today" (constant — always fetches current day, no caching across days).
-// Today: 00:00:00 → 23:59:59 of the current device date (full day, local timezone → UTC).
+// Today: [midnight_local → midnight_of_tomorrow_local) — matches SQL's `occurred_at < $to`.
 final todaySummaryProvider = FutureProvider.autoDispose((ref) {
   final now   = DateTime.now();
   final start = DateTime(now.year, now.month, now.day).toUtc();
-  final end   = DateTime(now.year, now.month, now.day, 23, 59, 59).toUtc();
+  final end   = DateTime(now.year, now.month, now.day + 1).toUtc(); // exclusive
   return ref.watch(reportsApiProvider).getDateRangeSummary(
     start.toIso8601String(),
     end.toIso8601String(),
