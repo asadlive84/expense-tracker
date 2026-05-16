@@ -63,3 +63,17 @@ func (h *TagHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, t)
 }
+
+func (h *TagHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	userID, _ := auth.UserIDFromContext(r.Context())
+	id, err := parseUUID(r, "id")
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+	if err := h.svc.Delete(r.Context(), id, userID); err != nil {
+		handleError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

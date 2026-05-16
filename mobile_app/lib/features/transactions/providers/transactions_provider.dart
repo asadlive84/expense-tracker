@@ -128,5 +128,6 @@ class TransactionsController extends AsyncNotifier<TransactionState> {
     ref.invalidate(personBalancesProvider);
     ref.invalidate(tagTotalsProvider);
     ref.invalidate(monthlySummaryProvider);
+    ref.invalidate(dateRangeSummaryProvider); // invalidates all timeframe caches
   }
 }

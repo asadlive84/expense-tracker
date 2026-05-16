@@ -115,6 +115,15 @@ func (s *Service) Update(ctx context.Context, id, userID uuid.UUID, in UpdateInp
 	return &t, nil
 }
 
+// Delete permanently removes a tag. The junction rows in transaction_tags are
+// cascade-deleted by the DB, so linked transactions remain intact as untagged.
+func (s *Service) Delete(ctx context.Context, id, userID uuid.UUID) error {
+	return sqlcdb.New(s.pool).DeleteTag(ctx, sqlcdb.DeleteTagParams{
+		ID:     id,
+		UserID: userID,
+	})
+}
+
 func fromRow(r sqlcdb.Tag) Tag {
 	t := Tag{
 		ID:        r.ID,

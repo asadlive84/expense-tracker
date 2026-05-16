@@ -75,6 +75,7 @@ func NewRouter(pool *pgxpool.Pool, redisCache *cache.Cache, jwtSecret string, lo
 		r.Get("/v1/tags", tagH.List)
 		r.Post("/v1/tags", tagH.Create)
 		r.Patch("/v1/tags/{id}", tagH.Update)
+		r.Delete("/v1/tags/{id}", tagH.Delete)
 
 		r.Get("/v1/transactions", txH.List)
 		r.Post("/v1/transactions", txH.Create)

@@ -34,8 +34,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _checkAuth() async {
-    await Future.delayed(const Duration(milliseconds: 1200));
-    await ref.read(authControllerProvider.notifier).checkAuth();
+    await Future.delayed(const Duration(milliseconds: 800));
+    try {
+      await ref.read(authControllerProvider.notifier)
+          .checkAuth()
+          .timeout(const Duration(seconds: 6));
+    } catch (_) {
+      // Hard ceiling — if everything somehow still hangs, force login screen.
+      if (mounted) {
+        ref.read(authControllerProvider.notifier).state = const Unauthenticated();
+      }
+    }
   }
 
   @override

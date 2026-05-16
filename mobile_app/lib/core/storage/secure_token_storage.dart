@@ -4,7 +4,11 @@ class SecureTokenStorage {
   static const _tokenKey = 'jwt_token';
   static const _expiryKey = 'jwt_expiry';
   
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage(
+    // EncryptedSharedPreferences works reliably on all real Android devices,
+    // unlike the default Android Keystore which can hang on Samsung/MIUI.
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   Future<void> writeToken(String token, DateTime? expiresAt) async {
     await _storage.write(key: _tokenKey, value: token);

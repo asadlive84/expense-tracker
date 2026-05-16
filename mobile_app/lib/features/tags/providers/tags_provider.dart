@@ -26,6 +26,10 @@ class TagsApi {
     });
     return Tag.fromJson(response.data! as Map<String, dynamic>);
   }
+
+  Future<void> deleteTag(String id) async {
+    await _dio.delete<void>('tags/$id');
+  }
 }
 
 final tagsProvider = AsyncNotifierProvider<TagsController, List<Tag>>(() {
@@ -50,6 +54,13 @@ class TagsController extends AsyncNotifier<List<Tag>> {
 
   Future<void> editTag(String id, {String? name, bool? archived}) async {
     await ref.read(tagsApiProvider).updateTag(id, name: name, archived: archived);
+    await refresh();
+  }
+
+  /// Permanently deletes the tag. Linked transactions remain (junction rows
+  /// are cascade-removed by the DB, transactions themselves are untouched).
+  Future<void> deleteTag(String id) async {
+    await ref.read(tagsApiProvider).deleteTag(id);
     await refresh();
   }
 }

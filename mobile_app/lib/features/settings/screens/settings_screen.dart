@@ -27,7 +27,7 @@ class SettingsScreen extends ConsumerWidget {
           // Manage section
           _SectionTitle(title: 'Manage'),
           _SettingsTile(
-            icon: Icons.savings_rounded,
+            icon: Icons.account_balance_wallet_rounded,
             iconColor: cs.primary,
             title: 'Money Sources',
             subtitle: 'Add, rename, archive your money sources',

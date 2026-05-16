@@ -351,7 +351,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                         // From source
                         if (_needsFrom)
                           _Pill(
-                            icon: Icons.savings_outlined,
+                            icon: Icons.account_balance_wallet_outlined,
                             label: fromName ?? (_type == 'transfer' ? 'From' : 'Source ↓'),
                             empty: fromName == null,
                             trailing: fromName != null ? Icons.swap_horiz_rounded : null,
@@ -361,7 +361,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
                         // To source
                         if (_needsTo)
                           _Pill(
-                            icon: Icons.savings_outlined,
+                            icon: Icons.account_balance_wallet_outlined,
                             label: toName ?? (_type == 'transfer' ? 'To ↓' : 'Source ↓'),
                             empty: toName == null,
                             trailing: toName != null ? Icons.swap_horiz_rounded : null,
@@ -582,7 +582,7 @@ class _MoneySourcePicker extends StatelessWidget {
                     color: ok ? cs.primaryContainer : cs.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(Icons.savings_outlined, size: 18,
+                  child: Icon(Icons.account_balance_wallet_outlined, size: 18,
                       color: ok ? cs.primary : cs.onSurfaceVariant),
                 ),
                 title: Text(b.name,
