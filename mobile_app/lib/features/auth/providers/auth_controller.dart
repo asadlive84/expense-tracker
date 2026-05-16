@@ -32,15 +32,21 @@ class AuthController extends Notifier<AuthState> {
   AuthState build() => const AuthInitial();
 
   Future<void> checkAuth() async {
-    final storage = ref.read(secureStorageProvider);
-    final token = await storage.readToken();
-    final expiry = await storage.readExpiry();
+    try {
+      final storage = ref.read(secureStorageProvider);
 
-    if (token != null && (expiry == null || expiry.isAfter(DateTime.now()))) {
-      // Reload saved name into provider so home screen greets correctly
-      ref.invalidate(userNameProvider);
-      state = const Authenticated('me');
-    } else {
+      // 4-second timeout per read — guards against Keystore hangs on real devices
+      final token  = await storage.readToken().timeout(const Duration(seconds: 4));
+      final expiry = await storage.readExpiry().timeout(const Duration(seconds: 4));
+
+      if (token != null && (expiry == null || expiry.isAfter(DateTime.now()))) {
+        ref.invalidate(userNameProvider);
+        state = const Authenticated('me');
+      } else {
+        state = const Unauthenticated();
+      }
+    } catch (_) {
+      // Secure storage failure or timeout → send to login, never stay on splash.
       state = const Unauthenticated();
     }
   }

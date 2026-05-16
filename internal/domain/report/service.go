@@ -131,6 +131,24 @@ func (s *Service) TagTotals(ctx context.Context, userID uuid.UUID, from, to time
 	return result, nil
 }
 
+func (s *Service) SummaryByRange(ctx context.Context, userID uuid.UUID, from, to time.Time) (*MonthlySummary, error) {
+	row, err := sqlcdb.New(s.pool).MonthlySummary(ctx, sqlcdb.MonthlySummaryParams{
+		UserID:       userID,
+		OccurredAt:   pgtype.Timestamptz{Time: from, Valid: true},
+		OccurredAt_2: pgtype.Timestamptz{Time: to, Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("summary by range: %w", err)
+	}
+	tagTotals, _ := s.TagTotals(ctx, userID, from, to)
+	return &MonthlySummary{
+		Income:  row.TotalIncome,
+		Expense: row.TotalExpense,
+		Net:     row.TotalIncome - row.TotalExpense,
+		ByTag:   tagTotals,
+	}, nil
+}
+
 func (s *Service) Summary(ctx context.Context, userID uuid.UUID, month string) (*MonthlySummary, error) {
 	key := cache.KeySummary(userID.String(), month)
 

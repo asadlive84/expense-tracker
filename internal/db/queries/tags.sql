@@ -29,3 +29,6 @@ RETURNING id, user_id, name, archived_at, created_at;
 SELECT id, user_id, name, archived_at, created_at
 FROM tags
 WHERE user_id = $1 AND LOWER(name) = LOWER($2);
+
+-- name: DeleteTag :exec
+DELETE FROM tags WHERE id = $1 AND user_id = $2;

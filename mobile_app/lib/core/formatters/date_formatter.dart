@@ -1,43 +1,41 @@
 import 'package:intl/intl.dart';
 
 class DateFormatter {
-  /// Returns e.g. "Sunday 13th May 2:02PM"
+  /// "Sunday 13th May 2:02PM" — always in device local time.
   static String full(DateTime dt) {
-    final day     = DateFormat('EEEE').format(dt);   // Sunday
-    final date    = _ordinal(dt.day);                 // 13th
-    final month   = DateFormat('MMMM').format(dt);   // May
-    final time    = DateFormat('h:mma').format(dt)   // 2:02PM
-                      .replaceAll('AM', 'AM')
-                      .replaceAll('PM', 'PM');
-    return '$day $date $month $time';
+    final local = dt.toLocal();
+    final day   = DateFormat('EEEE').format(local);
+    final month = DateFormat('MMMM').format(local);
+    final time  = DateFormat('h:mma').format(local);
+    return '$day ${_ordinal(local.day)} $month $time';
   }
 
-  /// Compact: "13th May, 2:02PM"
+  /// "13th May, 2:02PM"
   static String compact(DateTime dt) {
-    final date  = _ordinal(dt.day);
-    final month = DateFormat('MMM').format(dt);
-    final time  = DateFormat('h:mma').format(dt);
-    return '$date $month, $time';
+    final local = dt.toLocal();
+    final month = DateFormat('MMM').format(local);
+    final time  = DateFormat('h:mma').format(local);
+    return '${_ordinal(local.day)} $month, $time';
   }
 
-  /// Date only: "13th May 2026"
+  /// "13th May 2026"
   static String dateOnly(DateTime dt) {
-    final date  = _ordinal(dt.day);
-    final month = DateFormat('MMMM').format(dt);
-    return '$date $month ${dt.year}';
+    final local = dt.toLocal();
+    final month = DateFormat('MMMM').format(local);
+    return '${_ordinal(local.day)} $month ${local.year}';
   }
 
-  /// Smart: "Today 2:02PM", "Yesterday 2:02PM", or "13th May 2:02PM"
+  /// "Today 2:02PM", "Yesterday 9:15AM", "13th May 2:02PM"
   static String smart(DateTime dt) {
+    final local = dt.toLocal();
     final now   = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final day   = DateTime(dt.year, dt.month, dt.day);
-
-    final time  = DateFormat('h:mma').format(dt);
+    final day   = DateTime(local.year, local.month, local.day);
+    final time  = DateFormat('h:mma').format(local);
 
     if (day == today) return 'Today $time';
     if (day == today.subtract(const Duration(days: 1))) return 'Yesterday $time';
-    return '${_ordinal(dt.day)} ${DateFormat('MMM').format(dt)} $time';
+    return '${_ordinal(local.day)} ${DateFormat('MMM').format(local)} $time';
   }
 
   static String _ordinal(int n) {
